@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-11-09
+
+- A connection loss in recorded history is now followed by the "Reconnected" event, so a past upsd restart no longer looks like an ongoing outage.
+- The Device card shows the rated watts next to an EcoFlow pack size, once the driver reports them.
+- The README notes how EcoFlow power stations report live power through NUT's `ecoflow_cdc_port`.
+
 ## 0.1.0 - 2026-11-09
 
 The first release.

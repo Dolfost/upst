@@ -679,15 +679,15 @@ fn device(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     });
     row("Driver", driver);
     row("Beeper", u.text("ups.beeper.status").map(str::to_string));
-    let rated = if u.capacity_guessed {
+    let watts = u.text("ups.realpower.nominal").map(|v| format!("{v} W"));
+    let size = if u.capacity_guessed {
         u.capacity_wh.map(|wh| format!("{} Wh pack", fmt::num(wh)))
     } else {
-        let va = u.text("ups.power.nominal").map(|v| format!("{v} VA"));
-        let watts = u.text("ups.realpower.nominal").map(|v| format!("{v} W"));
-        match (va, watts) {
-            (Some(a), Some(b)) => Some(format!("{a}, {b}")),
-            (a, b) => a.or(b),
-        }
+        u.text("ups.power.nominal").map(|v| format!("{v} VA"))
+    };
+    let rated = match (size, watts) {
+        (Some(a), Some(b)) => Some(format!("{a}, {b}")),
+        (a, b) => a.or(b),
     };
     row("Rated", rated);
     let srv = &cx.app.servers[u.server];

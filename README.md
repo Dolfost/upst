@@ -323,6 +323,10 @@ With recorded history the steps before upst started count too, so a slow dischar
 They also report the app's discharge limit as `battery.charge.low` (0 while the limit is off), never set `CHRG`, give the runtime in whole minutes capped at about 5.5 days, and have no live power reading over HID.
 NUT raises low battery only below `battery.charge.low`, so set `override.battery.charge.low` in `ups.conf` if the app limit is off.
 
+The live readings come over a second USB interface, a CDC serial port, which the driver reads from NUT 2.8.6 on (built from NUT's master branch until that is released).
+Point `ecoflow_cdc_port` in `ups.conf` at the port, ideally through a stable name such as a udev symlink, and the driver adds output and input power, load, AC voltage and frequency, temperatures and per-outlet power; upst then shows the Load, Line and Environment cards.
+A Delta 3 Max Plus answers it (EMS firmware 2.1.1.104).
+
 ## How it works
 
 One thread per upsd server keeps a connection open, runs `LIST VAR` for each UPS every interval, reconnects with backoff, and fetches descriptions when you look at a variable.

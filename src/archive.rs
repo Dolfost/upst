@@ -135,6 +135,8 @@ pub fn replay(u: &mut Ups, records: &[Record], until: f64) -> Vec<(f64, Severity
     // A poll to apply once its records are all read.
     let mut pending: Option<f64> = None;
     let mut last: Option<f64> = None;
+    // upsd was lost, as opposed to the recorder not running.
+    let mut lost = false;
     let apply = |u: &mut Ups, vars: &BTreeMap<String, String>, t: f64, events: &mut Vec<(f64, Severity, String)>| {
         let list = vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
         events.extend(u.apply(list, from_unix(t)).into_iter().map(|(s, m)| (t, s, m)));
@@ -156,11 +158,16 @@ pub fn replay(u: &mut Ups, records: &[Record], until: f64) -> Vec<(f64, Severity
                 up = false;
             }
             Kind::Up => {
+                // As live upst says when a lost connection comes back.
+                if std::mem::take(&mut lost) {
+                    events.push((r.t, Severity::Info, format!("Reconnected to {}", u.server_label)));
+                }
                 up = true;
                 pending = Some(r.t);
             }
             Kind::Down(why) | Kind::NoData(why) => {
                 up = false;
+                lost |= matches!(r.kind, Kind::Down(_));
                 let link =
                     if matches!(r.kind, Kind::Down(_)) { Link::Down(why.clone()) } else { Link::Stale(why.clone()) };
                 if let Some((sev, text)) = u.lost_at(link, from_unix(r.t)) {
@@ -268,7 +275,8 @@ mod tests {
             [
                 "Power failure, running on battery",
                 "Power restored after 3m 00s on battery",
-                "Lost upsd: Connection refused"
+                "Lost upsd: Connection refused",
+                "Reconnected to localhost"
             ]
         );
         assert_eq!(events[0].0, t0 + 60.0);
