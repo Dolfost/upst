@@ -16,7 +16,7 @@ For what upst shows and its keys, see the [README](../README.md).
 - **A NUT server**: `upsd` from [Network UPS Tools](https://networkupstools.org/) with the driver for your UPS running (upst is tested with NUT 2.8).
   upst speaks the network protocol itself, so the machine it runs on needs no NUT packages.
   From NUT 2.8 on, upsd also reports whether an instant command actually ran.
-- **Linux**. macOS and the BSDs should work, but are untested; Windows is not supported.
+- **Linux or macOS**, both tested in CI. The BSDs should work but are untested; Windows is not supported.
 - **A terminal** with UTF-8.
   upst uses the 16 standard colors, so it follows the terminal's light or dark theme.
   The charts use braille and block characters and the battery gauge uses box-drawing ones; common monospace fonts have them all.
@@ -26,6 +26,15 @@ For what upst shows and its keys, see the [README](../README.md).
 - **For the recorder**: a service manager to keep it running (a systemd unit and a NixOS module are included), a writable directory for the journals and, for upst on the same machine, a directory for its socket.
 
 ## Install
+
+Prebuilt binaries for Linux (x86_64 and aarch64, static) and macOS are on the [releases page](https://github.com/Dolfost/upst/releases/latest):
+
+```sh
+curl -L https://github.com/Dolfost/upst/releases/latest/download/upst-x86_64-unknown-linux-musl.tar.gz | tar xz
+sudo install upst-*/upst /usr/local/bin/
+```
+
+That path is where [contrib/upst.service](../contrib/upst.service) expects it.
 
 With Nix:
 

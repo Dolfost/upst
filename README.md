@@ -1,5 +1,8 @@
 # upst
 
+[![ci](https://github.com/Dolfost/upst/actions/workflows/ci.yml/badge.svg)](https://github.com/Dolfost/upst/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Dolfost/upst)](https://github.com/Dolfost/upst/releases/latest)
+
 A terminal dashboard for UPSes watched by [Network UPS Tools](https://networkupstools.org/).
 upst talks to `upsd` over the NUT network protocol, so it works with any UPS that NUT supports, on this machine or across the network, and needs no NUT tools installed where it runs.
 The layout follows the terminal size: a three-column dashboard on a wide screen, one column in a narrow one, and a few borderless lines in a small tmux split.
@@ -48,6 +51,18 @@ Pick one with `--charge-style`, `charge-style` in the config file or `UPST_CHARG
 ## Install
 
 [Setting up](docs/setup.md) has the requirements, getting upsd ready, the config file and the recorder service in detail.
+
+### Prebuilt binaries
+
+[Releases](https://github.com/Dolfost/upst/releases/latest) have static Linux binaries for x86_64 and aarch64, and macOS binaries for Intel and Apple silicon:
+
+```sh
+curl -L https://github.com/Dolfost/upst/releases/latest/download/upst-x86_64-unknown-linux-musl.tar.gz | tar xz
+sudo install upst-*/upst /usr/local/bin/
+```
+
+The other archives are `upst-aarch64-unknown-linux-musl`, `upst-x86_64-apple-darwin` and `upst-aarch64-apple-darwin`.
+Each holds the binary, the systemd units, the example config file and the docs, and `SHA256SUMS` has their checksums.
 
 ### Nix
 
@@ -333,6 +348,14 @@ UPST_SNAP=120x40,80x24 UPST_VIEWS=1234 UPST_STYLE=lcd cargo test snapshots -- --
 `nix flake check` builds the package and runs the same tests; on Linux it also boots a NixOS VM with a dummy UPS and the recorder service, and checks that the module's settings reach the recorder and every user's upst, and that an ordinary user's upst finds the recorder and loads its history.
 The demo password `wrong` is refused, to exercise the failure path.
 `docs/screenshots.sh` regenerates the images in this README from the demo; the header comment lists the tools it needs.
+
+To release, set the new version in `Cargo.toml`, add a section for it to [CHANGELOG.md](CHANGELOG.md), and push a tag:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The release workflow checks that the tag, `Cargo.toml` and the changelog agree, builds the four binaries and publishes them with the changelog section as the notes.
 
 ## License
 
