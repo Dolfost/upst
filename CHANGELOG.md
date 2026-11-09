@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 - 2026-11-09
+
+- The Load card lists the outlets or outlet groups a device reports, with each one's draw and its share of the total, for PDUs, rack UPSes with switchable groups and power stations such as the EcoFlow (AC, DC, USB-A, USB-C).
+
 ## 0.1.1 - 2026-11-09
 
 - A connection loss in recorded history is now followed by the "Reconnected" event, so a past upsd restart no longer looks like an ongoing outage.

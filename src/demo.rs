@@ -151,6 +151,9 @@ fn rack() -> Unit {
         ("ups.power.nominal", "1500"),
         ("ups.productid", "0003"),
         ("ups.realpower.nominal", "1000"),
+        ("outlet.count", "2"),
+        ("outlet.1.desc", "Servers"),
+        ("outlet.2.desc", "Network"),
         ("ups.serial", "DEMO-0001"),
         ("ups.test.result", "No test initiated"),
         ("ups.timer.shutdown", "-1"),
@@ -370,6 +373,13 @@ fn step_rack(u: &mut Unit, dt: f64, off: bool, now: Instant, w: &mut impl FnMut(
     u.set("output.current", format!("{:.2}", load / 100.0 * 1000.0 / 230.0));
     u.set("ups.load", format!("{load:.0}"));
     u.set("ups.realpower", format!("{:.0}", load / 100.0 * 1000.0));
+    // Two outlet groups; the servers draw most of it.
+    let servers = load / 100.0 * 1000.0 * 0.72;
+    u.set("outlet.1.realpower", format!("{servers:.0}"));
+    u.set("outlet.2.realpower", format!("{:.0}", load / 100.0 * 1000.0 - servers));
+    for n in 1..=2 {
+        u.set(&format!("outlet.{n}.status"), if off { "off" } else { "on" });
+    }
     u.set("ups.power", format!("{:.0}", load / 100.0 * 1000.0 / 0.82));
     u.set("ups.temperature", format!("{:.1}", 31.0 + load / 20.0));
     u.set("ambient.temperature", format!("{:.1}", 23.4 + w() * 0.1));

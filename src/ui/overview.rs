@@ -74,7 +74,9 @@ fn cards(u: &Ups) -> Vec<Card> {
     if u.has_prefix("battery.") {
         v.push(Card::Battery);
     }
-    if u.has_any(&["ups.load", "ups.realpower", "ups.power", "output.current", "ups.efficiency"]) {
+    if u.has_any(&["ups.load", "ups.realpower", "ups.power", "output.current", "ups.efficiency"])
+        || !outlets(u).is_empty()
+    {
         v.push(Card::Power);
     }
     if u.has_any(&["input.voltage", "output.voltage", "input.frequency", "output.frequency"]) {
@@ -494,6 +496,101 @@ fn power(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
     if let Some(v) = u.text("ups.efficiency") {
         lines.push(kv(t, "Effic.", LW, vec![val(t, format!("{v}%"))]));
     }
+    lines.extend(outlet_lines(t, u, w));
+    lines
+}
+
+/// A numbered outlet or outlet group, as PDUs, rack UPSes and power
+/// stations report them.
+struct Outlet {
+    name: String,
+    /// What it draws, with the unit.
+    draw: Option<(f64, &'static str)>,
+    off: bool,
+}
+
+/// Outlets beyond these are left to the Variables view.
+const MAX_OUTLETS: usize = 8;
+
+fn outlets(u: &Ups) -> Vec<Outlet> {
+    let mut ids: Vec<u32> =
+        u.vars.keys().filter_map(|k| k.strip_prefix("outlet.")?.split('.').next()?.parse().ok()).collect();
+    ids.sort_unstable();
+    ids.dedup();
+    let mut list: Vec<Outlet> = ids
+        .into_iter()
+        .filter_map(|n| {
+            let var = |what: &str| format!("outlet.{n}.{what}");
+            let draw = [("realpower", "W"), ("power", "VA"), ("current", "A")]
+                .into_iter()
+                .find_map(|(what, unit)| Some((u.num(&var(what))?, unit)));
+            let status = u.text(&var("status"));
+            if draw.is_none() && status.is_none() {
+                return None;
+            }
+            let name = u.text(&var("desc")).filter(|d| !d.trim().is_empty());
+            Some(Outlet {
+                name: name.map_or_else(|| format!("Outlet {n}"), |d| d.trim().to_string()),
+                draw,
+                off: status.is_some_and(|s| s.eq_ignore_ascii_case("off")),
+            })
+        })
+        .collect();
+    // "AC output", "DC output": a last word they all share says nothing.
+    let last = |s: &str| s.rsplit_once(' ').map(|(_, l)| l.to_ascii_lowercase());
+    if list.len() > 1
+        && let Some(word) = last(&list[0].name)
+        && list.iter().all(|o| last(&o.name).as_ref() == Some(&word))
+    {
+        for o in &mut list {
+            if let Some((head, _)) = o.name.rsplit_once(' ') {
+                o.name = head.trim_end().to_string();
+            }
+        }
+    }
+    list
+}
+
+/// A row per outlet: its name, its share of the total draw and the draw.
+fn outlet_lines(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
+    let list = outlets(u);
+    let draws: Vec<String> = list
+        .iter()
+        .map(|o| match (o.off, o.draw) {
+            (true, _) => "off".to_string(),
+            (false, Some((v, unit))) => format!("{} {unit}", fmt::num(v)),
+            (false, None) => "on".to_string(),
+        })
+        .collect();
+    let vw = draws.iter().map(|d| d.chars().count()).max().unwrap_or(0);
+    let nw = list.iter().map(|o| o.name.chars().count()).max().unwrap_or(0).min(14).min(w.saturating_sub(LW + 1 + vw));
+    if nw == 0 {
+        return Vec::new();
+    }
+    // Shares only add up when every outlet counts in the same unit.
+    let unit = list.iter().find_map(|o| o.draw.map(|d| d.1));
+    let same = list.iter().all(|o| o.draw.is_none_or(|d| Some(d.1) == unit));
+    let total: f64 = list.iter().filter(|o| !o.off).filter_map(|o| o.draw).map(|d| d.0.max(0.0)).sum();
+    let bw = w.saturating_sub(LW + nw + 2 + vw);
+    let mut lines = Vec::new();
+    for (i, (o, d)) in list.iter().zip(&draws).take(MAX_OUTLETS).enumerate() {
+        let name: String = o.name.chars().take(nw).collect();
+        let mut spans = vec![Span::raw(format!("{name:<nw$} "))];
+        if bw >= 4 {
+            let share = match o.draw {
+                Some((v, _)) if same && total > 0.0 && !o.off => v.max(0.0) / total,
+                _ => 0.0,
+            };
+            spans.extend(bar(t, bw, share, t.accent(), &[]));
+            spans.push(Span::raw(" "));
+        }
+        spans.push(Span::styled(format!("{d:>vw$}"), if o.off { t.dim() } else { t.value() }));
+        lines.push(kv(t, if i == 0 { "Outlets" } else { "" }, LW, spans));
+    }
+    if list.len() > MAX_OUTLETS {
+        let more = format!("+{} more in Variables", list.len() - MAX_OUTLETS);
+        lines.push(kv(t, "", LW, vec![dim(t, more)]));
+    }
     lines
 }
 
@@ -823,6 +920,50 @@ mod tests {
         assert!(pack(&[30, 30, 30], 2, 40).is_none());
         // Balanced: two short cards go side by side rather than stacked.
         assert_eq!(pack(&[5, 5], 3, 10).unwrap(), vec![vec![0], vec![1]]);
+    }
+
+    fn ups(vars: &[(&str, &str)]) -> Ups {
+        let mut u = Ups::new(0, "localhost", "ups", "", crate::history::History::new(3600.0, 2.0), None);
+        u.apply(vars.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(), SystemTime::now());
+        u
+    }
+
+    fn text(lines: &[Line]) -> Vec<String> {
+        lines.iter().map(|l| l.spans.iter().map(|s| s.content.as_ref()).collect::<String>()).collect()
+    }
+
+    #[test]
+    fn lists_outlets() {
+        let t = Theme { color: false, ascii: false };
+        // A power station: the shared "output" goes, every outlet is listed.
+        let u = ups(&[
+            ("ups.status", "OL"),
+            ("outlet.count", "3"),
+            ("outlet.1.desc", "AC output"),
+            ("outlet.1.realpower", "113.0"),
+            ("outlet.2.desc", "DC output"),
+            ("outlet.2.realpower", "0.0"),
+            ("outlet.10.desc", "USB-C output"),
+            ("outlet.10.realpower", "2.5"),
+        ]);
+        assert!(cards(&u).contains(&Card::Power));
+        let rows = text(&outlet_lines(&t, &u, 40));
+        assert_eq!(rows.len(), 3);
+        assert!(rows[0].starts_with("Outlets   AC  ") && rows[0].ends_with(" 113 W"), "{rows:?}");
+        assert!(rows[1].starts_with("          DC  ") && rows[1].ends_with("   0 W"), "{rows:?}");
+        assert!(rows[2].starts_with("          USB-C ") && rows[2].ends_with("2.50 W"), "{rows:?}");
+        assert!(rows.iter().all(|r| r.chars().count() <= 40));
+        // Too narrow for a bar, still a name and a value; too narrow for that, nothing.
+        assert_eq!(text(&outlet_lines(&t, &u, 24))[0], "Outlets   AC     113 W");
+        assert!(outlet_lines(&t, &u, 12).is_empty());
+
+        // A switched outlet with no reading, and one without a name.
+        let u = ups(&[("ups.status", "OL"), ("outlet.1.status", "off"), ("outlet.2.current", "1.20")]);
+        let rows = text(&outlet_lines(&t, &u, 40));
+        assert!(rows[0].starts_with("Outlets   Outlet 1") && rows[0].ends_with("off"), "{rows:?}");
+        assert!(rows[1].ends_with("1.20 A"), "{rows:?}");
+        // Only a description is not an outlet worth a row.
+        assert!(outlets(&ups(&[("outlet.1.desc", "Main")])).is_empty());
     }
 
     #[test]

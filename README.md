@@ -12,7 +12,7 @@ With `upst record` running as a service, it opens with the charts and events of 
 
 ## Features
 
-- **Overview** with cards for status, battery, load, line, environment, trends, device and recent events.
+- **Overview** with cards for status, battery, load (with what each outlet or outlet group draws), line, environment, trends, device and recent events.
   A card appears only when the UPS reports its data. Cards flow into one to three columns and shrink before any is hidden, and spare room goes to a bigger battery, taller sparklines and more events.
 - **Five charge styles**: a battery gauge, seven-segment digits like a UPS front panel, a row of LED segments colored by zone, big pixel digits, or a plain bar. `b` switches between them.
 - **Bars with thresholds**: the charge marks the low and warning levels, and input and output voltage sit on a meter whose green zone is the transfer range.
