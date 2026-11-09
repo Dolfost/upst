@@ -1,0 +1,24 @@
+# upst record as a user service, when you would rather not run a system one.
+#
+#   cp contrib/upst-user.service ~/.config/systemd/user/upst.service
+#   systemctl --user enable --now upst.service
+#
+# The journals go to ~/.local/state/upst and the socket to
+# $XDG_RUNTIME_DIR/upst/upst.sock, where upst looks for it. Settings go in
+# the [record] table of ~/.config/upst/config.toml. History is only
+# recorded while you are logged in, unless lingering is on
+# (loginctl enable-linger).
+
+[Unit]
+Description=upst UPS history recorder
+Documentation=https://github.com/Dolfost/upst
+
+[Service]
+ExecStart=%h/.cargo/bin/upst record
+Restart=on-failure
+RestartSec=5
+StateDirectory=upst
+RuntimeDirectory=upst
+
+[Install]
+WantedBy=default.target

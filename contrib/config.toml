@@ -1,0 +1,51 @@
+# upst config file, with every key at its default or an example.
+#
+# upst reads /etc/upst/config.toml and then ~/.config/upst/config.toml
+# ($XDG_CONFIG_HOME/upst/config.toml), the second one winning key by key.
+# --config FILE (or UPST_CONFIG) reads only FILE. The command line and the
+# UPST_* variables win over both.
+#
+#   mkdir -p ~/.config/upst && cp contrib/config.toml ~/.config/upst/
+#
+# Each key is named after its command-line option. Times take ms, s, m, h
+# or d ("5s", "24h"), or a plain number of seconds.
+
+# UPSes to watch, as ups[@host[:port]], or @host[:port] for every UPS on a
+# server. Default: every UPS on localhost.
+# targets = ["ups@localhost", "@nas.lan"]
+
+# interval = "2s"              # time between polls
+# history = "24h"              # kept for charts and estimates, and loaded from the recorder
+# timeout = "5s"               # connect and reply timeout
+# view = "overview"            # overview, history, variables or events
+# charge-style = "battery"     # battery, lcd, segments, blocks or bar
+# capacity = 1024              # battery Wh, for every UPS without its own below
+# ascii = false                # ASCII bars and charts, for the Linux console
+# no-color = false
+# no-mouse = false             # leave the mouse to the terminal
+# bell = false                 # ring the terminal bell on power events
+# format = "{charge} {status}" # line template for --once
+
+# Login for instant commands and writable variables; watching needs none.
+# Keep the password in its own file, readable only by you.
+# user = "upst"
+# password-file = "/run/secrets/upsd-upst"
+
+# The upst record to load history from: a socket path or host[:port].
+# Default: /run/upst/upst.sock, or $XDG_RUNTIME_DIR/upst/upst.sock, when
+# one exists.
+# recorder = "nas.lan"
+# no-recorder = false
+
+# Settings for one UPS, named as a target. The quotes are needed.
+# [ups."ups@localhost"]
+# capacity = 1024              # battery Wh, for Wh left and power draw
+
+# upst record. targets and timeout default to the ones above.
+# [record]
+# targets = ["ups@localhost"]
+# interval = "5s"              # time between polls
+# keep = "7d"                  # history kept on disk
+# dir = "/var/lib/upst"        # default: $STATE_DIRECTORY, else ~/.local/state/upst
+# listen = ["/run/upst/upst.sock", "0.0.0.0:3494"]  # replaces the default socket, so list it too
+# timeout = "5s"

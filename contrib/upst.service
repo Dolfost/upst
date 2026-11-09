@@ -1,0 +1,53 @@
+# upst record as a system service, for systems without the NixOS module.
+#
+#   sudo cp contrib/upst.service /etc/systemd/system/
+#   sudo systemctl enable --now upst.service
+#
+# Adjust ExecStart if upst lives elsewhere. Settings go in the [record]
+# table of /etc/upst/config.toml (see contrib/config.toml); restart the
+# service after changing them. The journals go to /var/lib/upst and the
+# socket to /run/upst/upst.sock, where upst finds it by itself.
+
+[Unit]
+Description=upst UPS history recorder
+Documentation=https://github.com/Dolfost/upst
+After=network.target nut-server.service upsd.service
+
+[Service]
+ExecStart=/usr/local/bin/upst record
+Restart=on-failure
+RestartSec=5
+
+DynamicUser=yes
+StateDirectory=upst
+RuntimeDirectory=upst
+RuntimeDirectoryMode=0755
+
+CapabilityBoundingSet=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+PrivateUsers=yes
+ProcSubset=pid
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectProc=invisible
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target
