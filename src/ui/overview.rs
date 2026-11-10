@@ -515,7 +515,6 @@ struct Outlet {
     off: bool,
 }
 
-
 fn outlets(u: &Ups) -> Vec<Outlet> {
     let mut ids: Vec<u32> =
         u.vars.keys().filter_map(|k| k.strip_prefix("outlet.")?.split('.').next()?.parse().ok()).collect();
@@ -978,11 +977,7 @@ mod tests {
         assert!(outlets(&ups(&[("outlet.1.desc", "Main")])).is_empty());
 
         // Fitted to a card's rows: as many as fit, the last row counting the rest.
-        let u = ups(&[
-            ("outlet.1.realpower", "100"),
-            ("outlet.2.realpower", "20"),
-            ("outlet.3.realpower", "3"),
-        ]);
+        let u = ups(&[("outlet.1.realpower", "100"), ("outlet.2.realpower", "20"), ("outlet.3.realpower", "3")]);
         assert_eq!(text(&outlet_lines(&t, &u, 40, None)).len(), 3);
         assert_eq!(text(&outlet_lines(&t, &u, 40, Some(3))).len(), 3);
         let rows = text(&outlet_lines(&t, &u, 40, Some(2)));
