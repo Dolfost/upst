@@ -108,7 +108,7 @@ pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx, u: &Ups) {
     loop {
         let col_w = area.width / cols as u16;
         let inner_w = col_w.saturating_sub(2) as usize;
-        let natural: Vec<u16> = list.iter().map(|c| content(*c, cx, u, inner_w, 0).len() as u16 + 2).collect();
+        let natural: Vec<u16> = list.iter().map(|c| content(*c, cx, u, inner_w, 0, None).len() as u16 + 2).collect();
         let small: Vec<u16> = list.iter().zip(&natural).map(|(c, h)| (*h).min(c.min_lines() + 2)).collect();
         // Natural heights if everything fits; otherwise shrunk cards when
         // that shows more of them.
@@ -234,15 +234,18 @@ fn render(f: &mut Frame, rect: Rect, cx: &Ctx, u: &Ups, card: Card, extra: u16) 
     }
     let inner = block.inner(rect);
     f.render_widget(block, rect);
-    let lines = content(card, cx, u, inner.width as usize, extra);
+    let lines = content(card, cx, u, inner.width as usize, extra, Some(inner.height as usize));
     f.render_widget(Paragraph::new(lines), inner);
 }
 
-fn content(card: Card, cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
+/// A card's content for width `w`: with `rows` the content lines it
+/// actually has (so a shrunk card can fit a list to them), without them
+/// its natural, unabridged self. `extra` is spare rows beyond natural.
+fn content(card: Card, cx: &Ctx, u: &Ups, w: usize, extra: u16, rows: Option<usize>) -> Vec<Line<'static>> {
     match card {
         Card::Status => status(cx, u, w),
         Card::Battery => battery(cx, u, w, extra),
-        Card::Power => power(&cx.t, u, w),
+        Card::Power => power(&cx.t, u, w, rows),
         Card::Line => line(&cx.t, u, w),
         Card::Environment => environment(&cx.t, u, w),
         Card::Trends => trends(cx, u, w, extra),
@@ -460,7 +463,7 @@ fn battery(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
     lines
 }
 
-fn power(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
+fn power(t: &Theme, u: &Ups, w: usize, rows: Option<usize>) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     if let Some(load) = u.load() {
         let sev = if load >= 90.0 {
@@ -496,7 +499,10 @@ fn power(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
     if let Some(v) = u.text("ups.efficiency") {
         lines.push(kv(t, "Effic.", LW, vec![val(t, format!("{v}%"))]));
     }
-    lines.extend(outlet_lines(t, u, w));
+    // The outlets take whatever rows the card has left; all of them at
+    // natural height.
+    let room = rows.map(|r| r.saturating_sub(lines.len()));
+    lines.extend(outlet_lines(t, u, w, room));
     lines
 }
 
@@ -509,8 +515,6 @@ struct Outlet {
     off: bool,
 }
 
-/// Outlets beyond these are left to the Variables view.
-const MAX_OUTLETS: usize = 8;
 
 fn outlets(u: &Ups) -> Vec<Outlet> {
     let mut ids: Vec<u32> =
@@ -552,7 +556,9 @@ fn outlets(u: &Ups) -> Vec<Outlet> {
 }
 
 /// A row per outlet: its name, its share of the total draw and the draw.
-fn outlet_lines(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
+/// `room`: rows to fit into, the last of which says how many did not fit;
+/// `None` lists every outlet.
+fn outlet_lines(t: &Theme, u: &Ups, w: usize, room: Option<usize>) -> Vec<Line<'static>> {
     let list = outlets(u);
     let draws: Vec<String> = list
         .iter()
@@ -572,8 +578,14 @@ fn outlet_lines(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
     let same = list.iter().all(|o| o.draw.is_none_or(|d| Some(d.1) == unit));
     let total: f64 = list.iter().filter(|o| !o.off).filter_map(|o| o.draw).map(|d| d.0.max(0.0)).sum();
     let bw = w.saturating_sub(LW + nw + 2 + vw);
+    // Everything, or as many as fit with a note for the rest.
+    let shown = match room {
+        None => list.len(),
+        Some(r) if r >= list.len() => list.len(),
+        Some(r) => r.saturating_sub(1),
+    };
     let mut lines = Vec::new();
-    for (i, (o, d)) in list.iter().zip(&draws).take(MAX_OUTLETS).enumerate() {
+    for (i, (o, d)) in list.iter().zip(&draws).take(shown).enumerate() {
         let name: String = o.name.chars().take(nw).collect();
         let mut spans = vec![Span::raw(format!("{name:<nw$} "))];
         if bw >= 4 {
@@ -587,9 +599,9 @@ fn outlet_lines(t: &Theme, u: &Ups, w: usize) -> Vec<Line<'static>> {
         spans.push(Span::styled(format!("{d:>vw$}"), if o.off { t.dim() } else { t.value() }));
         lines.push(kv(t, if i == 0 { "Outlets" } else { "" }, LW, spans));
     }
-    if list.len() > MAX_OUTLETS {
-        let more = format!("+{} more in Variables", list.len() - MAX_OUTLETS);
-        lines.push(kv(t, "", LW, vec![dim(t, more)]));
+    if shown < list.len() && room.is_some_and(|r| r >= 1) {
+        let more = format!("+{} more in Variables", list.len() - shown);
+        lines.push(kv(t, if shown == 0 { "Outlets" } else { "" }, LW, vec![dim(t, more)]));
     }
     lines
 }
@@ -947,23 +959,38 @@ mod tests {
             ("outlet.10.realpower", "2.5"),
         ]);
         assert!(cards(&u).contains(&Card::Power));
-        let rows = text(&outlet_lines(&t, &u, 40));
+        let rows = text(&outlet_lines(&t, &u, 40, None));
         assert_eq!(rows.len(), 3);
         assert!(rows[0].starts_with("Outlets   AC  ") && rows[0].ends_with(" 113 W"), "{rows:?}");
         assert!(rows[1].starts_with("          DC  ") && rows[1].ends_with("   0 W"), "{rows:?}");
         assert!(rows[2].starts_with("          USB-C ") && rows[2].ends_with("2.50 W"), "{rows:?}");
         assert!(rows.iter().all(|r| r.chars().count() <= 40));
         // Too narrow for a bar, still a name and a value; too narrow for that, nothing.
-        assert_eq!(text(&outlet_lines(&t, &u, 24))[0], "Outlets   AC     113 W");
-        assert!(outlet_lines(&t, &u, 12).is_empty());
+        assert_eq!(text(&outlet_lines(&t, &u, 24, None))[0], "Outlets   AC     113 W");
+        assert!(outlet_lines(&t, &u, 12, None).is_empty());
 
         // A switched outlet with no reading, and one without a name.
         let u = ups(&[("ups.status", "OL"), ("outlet.1.status", "off"), ("outlet.2.current", "1.20")]);
-        let rows = text(&outlet_lines(&t, &u, 40));
+        let rows = text(&outlet_lines(&t, &u, 40, None));
         assert!(rows[0].starts_with("Outlets   Outlet 1") && rows[0].ends_with("off"), "{rows:?}");
         assert!(rows[1].ends_with("1.20 A"), "{rows:?}");
         // Only a description is not an outlet worth a row.
         assert!(outlets(&ups(&[("outlet.1.desc", "Main")])).is_empty());
+
+        // Fitted to a card's rows: as many as fit, the last row counting the rest.
+        let u = ups(&[
+            ("outlet.1.realpower", "100"),
+            ("outlet.2.realpower", "20"),
+            ("outlet.3.realpower", "3"),
+        ]);
+        assert_eq!(text(&outlet_lines(&t, &u, 40, None)).len(), 3);
+        assert_eq!(text(&outlet_lines(&t, &u, 40, Some(3))).len(), 3);
+        let rows = text(&outlet_lines(&t, &u, 40, Some(2)));
+        assert_eq!(rows.len(), 2, "{rows:?}");
+        assert!(rows[0].contains("100 W") && rows[1].ends_with("+2 more in Variables"), "{rows:?}");
+        let rows = text(&outlet_lines(&t, &u, 40, Some(1)));
+        assert_eq!(rows, vec!["Outlets   +3 more in Variables"], "{rows:?}");
+        assert!(outlet_lines(&t, &u, 40, Some(0)).is_empty());
     }
 
     #[test]

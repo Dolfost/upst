@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The Load card's outlet list is no longer capped at eight: at natural height every outlet is listed, and a card shrunk by a short terminal fits as many as its rows allow, ending with how many more the Variables view has.
+
 ## 0.1.2 - 2026-11-09
 
 - The Load card lists the outlets or outlet groups a device reports, with each one's draw and its share of the total, for PDUs, rack UPSes with switchable groups and power stations such as the EcoFlow (AC, DC, USB-A, USB-C).
