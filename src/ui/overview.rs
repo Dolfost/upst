@@ -74,7 +74,7 @@ fn cards(u: &Ups) -> Vec<Card> {
     if u.has_prefix("battery.") {
         v.push(Card::Battery);
     }
-    if u.has_any(&["ups.load", "ups.realpower", "ups.power", "output.current", "ups.efficiency"])
+    if u.has_any(&["ups.load", "ups.realpower", "ups.power", "input.realpower", "output.current", "ups.efficiency"])
         || !outlets(u).is_empty()
     {
         v.push(Card::Power);
@@ -489,6 +489,11 @@ fn power(t: &Theme, u: &Ups, w: usize, rows: Option<usize>) -> Vec<Line<'static>
     };
     if let Some(s) = of("ups.realpower", "W") {
         lines.push(kv(t, "Real", LW, s));
+    }
+    // What comes in from the grid or a charger: power stations report it,
+    // and it is the only input figure of a link without volts (BLE).
+    if let Some(s) = of("input.realpower", "W") {
+        lines.push(kv(t, "Input", LW, s));
     }
     if let Some(s) = of("ups.power", "VA") {
         lines.push(kv(t, "Apparent", LW, s));

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The Load card shows `input.realpower` as "Input": what comes in from the grid or a charger, which power stations report and which is the only input figure of a link without volts.
 - The Load card's outlet list is no longer capped at eight: at natural height every outlet is listed, and a card shrunk by a short terminal fits as many as its rows allow, ending with how many more the Variables view has.
 
 ## 0.1.2 - 2026-11-09
