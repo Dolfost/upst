@@ -117,7 +117,7 @@ Without a target upst watches every UPS on localhost.
 
 | Option | Default | |
 |---|---|---|
-| `-i`, `--interval TIME` | `2s` | Time between polls; `<` and `>` change it while running. |
+| `-i`, `--interval TIME` | `1s` | Time between polls; `<` and `>` change it while running. |
 | `--history TIME` | `24h` | How much history to keep for charts and estimates, and to load from the recorder. |
 | `--timeout TIME` | `5s` | Connect and reply timeout. |
 | `-u`, `--user USER` | | upsd user for commands and SET (`UPST_USER`). |

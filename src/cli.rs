@@ -64,7 +64,7 @@ pub struct Cli {
     pub targets: Vec<Target>,
 
     /// Time between polls (e.g. 2, 500ms, 10s)
-    #[arg(short, long, default_value = "2s", value_parser = parse_duration, value_name = "TIME")]
+    #[arg(short, long, default_value = "1s", value_parser = parse_duration, value_name = "TIME")]
     pub interval: Duration,
 
     /// How much history to keep for charts and trends, and to load from
