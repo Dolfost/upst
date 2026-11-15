@@ -334,12 +334,17 @@ The UI thread folds the answers into per-UPS state, history and events, and redr
 upst itself writes nothing to disk; its history lives in memory for `--history`.
 `upst record` uses the same pollers and writes what changed to its journals, and another thread asks it for them when upst starts.
 
+### The upst-core library
+
+The protocol client, the per-UPS state with its events and estimates, the pollers, the journal and the demo server are a library of their own, [upst-core](upst-core), for programs that want what upst knows about a UPS without the terminal: it uses `std` only, needs no async runtime, never prints, and gives events as types with stable codes such as `power.lost` or `battery.low`.
+See [its README](upst-core/README.md) for an example.
+
 ## Development
 
 ```sh
 nix develop               # cargo, rustc, clippy, rustfmt, rust-analyzer, NUT tools
 cargo run -- --demo
-cargo test
+cargo test --workspace --all-features
 ```
 
 The tests include protocol round trips against the demo server, every key of the example config file and its precedence over defaults and under the command line, the recorder serving its journals over both kinds of socket, the replay of a journal with outages and gaps, every charge style at every size, and every view rendered at sizes from 1x1 to 220x70.

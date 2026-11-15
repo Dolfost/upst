@@ -1,0 +1,163 @@
+# ups.alarm, ups.test.result, variable bookkeeping and recorded history.
+# Format: see ../README.md (or the header of 10-flags.scn).
+
+=== alarm-appears-changes-clears
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OL ALARM
+ups.alarm Replace battery
+@1700000020 poll+
+ups.alarm Overheat
+@1700000030 poll+
+@1700000040 poll+
+ups.status OL
+-ups.alarm
+@1700000050 poll+
+ups.alarm
+@1700000060 poll+
+ups.alarm "   "
+@1700000070 poll+
+ups.alarm Fan failure
+@1700000080 state
+@1700000090 poll+
+-ups.alarm
+
+=== alarm-reappears-with-the-same-text
+@1700000000 poll
+ups.status OL
+@1700000010 poll+
+ups.alarm Overheat
+@1700000020 poll+
+-ups.alarm
+@1700000030 poll+
+ups.alarm Overheat
+
+=== alarm-and-test-result-with-status-change
+# Order: power, set flags, cleared flags, alarm, self-test.
+@1700000000 poll
+ups.status OL
+ups.test.result No test initiated
+@1700000010 poll+
+ups.status OB DISCHRG ALARM TEST
+ups.alarm On battery
+ups.test.result In progress
+
+=== test-result-changes
+@1700000000 poll
+ups.status OL
+ups.test.result No test initiated
+@1700000010 poll+
+ups.status OL TEST
+ups.test.result In progress
+@1700000040 poll+
+ups.status OL
+ups.test.result Done and passed
+@1700000050 poll+
+@1700000060 poll+
+ups.test.result
+@1700000070 poll+
+-ups.test.result
+@1700000080 poll+
+ups.test.result Done and passed
+
+=== var-disappears-and-reappears
+@1700000000 poll
+ups.status OL
+input.voltage 230
+output.voltage 230
+@1700000010 state
+@1700000020 poll+
+-input.voltage
+@1700000030 state
+@1700000040 poll+
+input.voltage 230
+@1700000050 state
+@1700000060 poll+
+input.voltage 231
+-output.voltage
+@1700000070 poll+
+output.voltage 229
+
+=== var-prev-and-changed-bookkeeping
+# prev and changed stay from the last real change.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+ups.load 20
+@1700000010 poll+
+battery.charge 99
+@1700000020 poll+
+@1700000030 poll+
+ups.load 21
+@1700000040 poll+
+battery.charge 98
+@1700000045 state
+@1700000050 poll+
+ups.beeper.status enabled
+
+=== history-recordable-filter
+# Numbers that are not measurements stay out of the history; so do
+# non-finite and non-numeric values.
+@1700000000 poll
+ups.status OL
+battery.charge " 42 "
+battery.runtime 3600
+battery.date 2020
+battery.mfr.date 2021
+driver.version.internal 0.1
+driver.parameter.pollinterval 2
+ups.serial 123456
+ups.firmware 12
+ups.firmware.version 4
+ups.vendorid 0764
+ups.productid 0501
+ups.id 7
+device.serial 99
+input.voltage 230.5
+input.frequency NaN
+output.voltage inf
+ups.load 1e1
+ups.realpower 0x10
+ups.beeper.status enabled
+@1700000060 poll+
+battery.charge 41
+input.voltage 229.9
+ups.load 11
+battery.runtime 3500
+
+=== history-flat-runs-collapse
+@1700000000 poll
+ups.status OL
+battery.charge 100
+input.voltage 230
+@1700000010 poll+
+@1700000020 poll+
+@1700000030 poll+
+input.voltage 231
+@1700000040 poll+
+@1700000050 poll+
+@1700000060 poll+
+input.voltage 230
+@1700000070 poll+
+battery.charge 99
+
+=== history-trim-after-a-day
+@1700000000 poll
+ups.status OL
+battery.charge 100
+input.voltage 230
+@1700000060 poll+
+input.voltage 231
+@1700000120 poll+
+ups.status OB DISCHRG
+input.voltage 0
+@1700000180 poll+
+ups.status OL CHRG
+input.voltage 232
+@1700090000 poll+
+ups.status OL
+input.voltage 233
+@1700090060 poll+
+input.voltage 234

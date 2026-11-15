@@ -6,18 +6,24 @@ use std::str::FromStr;
 
 use crate::nut::DEFAULT_PORT;
 
+/// An upsd server: a host name or address, and a port.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Server {
+    /// A host name or an IP address; an IPv6 address has no brackets.
     pub host: String,
+    /// The TCP port, usually [`DEFAULT_PORT`].
     pub port: u16,
 }
 
 impl Server {
+    /// `localhost` on the default port.
     pub fn localhost() -> Self {
         Server { host: "localhost".into(), port: DEFAULT_PORT }
     }
 }
 
+/// `host`, `host:port`, or `[v6addr]:port`; the port only when it is not
+/// the default.
 impl fmt::Display for Server {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let host = if self.host.contains(':') { format!("[{}]", self.host) } else { self.host.clone() };
@@ -25,10 +31,22 @@ impl fmt::Display for Server {
     }
 }
 
+/// One UPS on a server, or every UPS on it: `ups[@host[:port]]` or
+/// `@host[:port]`.
+///
+/// ```
+/// use upst_core::target::Target;
+///
+/// let t: Target = "rack@[::1]:3500".parse().unwrap();
+/// assert_eq!(t.ups.as_deref(), Some("rack"));
+/// assert_eq!((t.server.host.as_str(), t.server.port), ("::1", 3500));
+/// assert_eq!(t.to_string(), "rack@[::1]:3500");
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Target {
     /// `None` means every UPS the server lists.
     pub ups: Option<String>,
+    /// Where the UPS is.
     pub server: Server,
 }
 
@@ -38,7 +56,8 @@ impl fmt::Display for Target {
     }
 }
 
-/// `host[:port]`, `[v6addr][:port]` or a bare IPv6 address.
+/// Parse `host[:port]`, `[v6addr][:port]` or a bare IPv6 address, with
+/// `default_port` when none is given. An empty host means `localhost`.
 pub fn parse_server(s: &str, default_port: u16) -> Result<Server, String> {
     let bad_port = |p: &str| format!("bad port {p:?}");
     let (host, port) = if let Some(rest) = s.strip_prefix('[') {
@@ -60,6 +79,8 @@ pub fn parse_server(s: &str, default_port: u16) -> Result<Server, String> {
     Ok(Server { host, port })
 }
 
+/// Parse the `upsc` syntax: `ups`, `ups@host`, `ups@host:port`,
+/// `ups@[v6addr]:port`, and `@host` or `*@host` for every UPS there.
 impl FromStr for Target {
     type Err = String;
 

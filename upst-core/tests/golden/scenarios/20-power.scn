@@ -1,0 +1,158 @@
+# Power source transitions, outages and battery time.
+# Format: see ../README.md (or the header of 10-flags.scn).
+
+=== power-ol-ob-ol
+@1700000000 poll
+ups.status OL
+battery.charge 100
+battery.charge.low 20
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000070 poll+
+ups.status OB DISCHRG LB
+battery.charge 19
+@1700000100 state
+@1700000130 poll+
+ups.status OL CHRG
+battery.charge 20
+
+=== power-ob-to-bypass
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000055 poll+
+ups.status BYPASS
+@1700000100 poll+
+ups.status OL
+
+=== power-ob-to-off-and-back
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000075 poll+
+ups.status OFF
+@1700000200 poll+
+ups.status OL CHRG
+
+=== power-ob-to-no-status
+# Empty ups.status, then ups.status gone altogether.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000040 poll+
+ups.status
+@1700000050 poll+
+ups.status OB
+@1700000080 poll+
+-ups.status
+@1700000090 state
+@1700000100 poll+
+ups.status OL
+
+=== power-ol-bypass-ol
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OL BYPASS
+@1700000070 poll+
+ups.status OL
+
+=== power-ob-and-bypass-together
+# OB wins over BYPASS; dropping OB leaves the battery for bypass.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB BYPASS
+@1700000030 poll+
+ups.status BYPASS
+@1700000040 poll+
+ups.status OL OFF
+@1700000050 poll+
+ups.status OL
+
+=== power-first-poll-on-battery
+# Not counted as an outage, but its battery time is.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 90
+@1700000090 poll+
+ups.status OL CHRG
+battery.charge 89
+
+=== power-first-poll-on-battery-low
+@1700000000 poll
+ups.status OB DISCHRG LB
+battery.charge 9
+battery.charge.low 10
+@1700000030 poll+
+ups.status OB DISCHRG
+@1700000060 poll+
+ups.status OL CHRG
+
+=== power-first-poll-on-battery-fsd
+@1700000000 poll
+ups.status OB FSD
+battery.charge 5
+
+=== power-first-poll-on-battery-overload
+@1700000000 poll
+ups.status OB OVER
+battery.charge 50
+
+=== power-first-poll-no-status-then-ob
+@1700000000 poll
+battery.charge 100
+@1700000010 poll+
+ups.status OB
+@1700000020 poll+
+ups.status OL
+
+=== power-multiple-outages
+# 60 s + 300 s finished, a third one still running.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000070 poll+
+ups.status OL CHRG
+@1700000100 poll+
+ups.status OB DISCHRG
+@1700000400 poll+
+ups.status OL CHRG
+@1700000500 poll+
+ups.status OB DISCHRG
+@1700000600 state
+@1700000700 poll+
+ups.status OB DISCHRG LB
+
+=== power-outage-duration-texts
+# 5 s, 65 s, 3725 s and 90000 s on battery (the last one also trims the
+# one-day history).
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000100 poll+
+ups.status OB
+@1700000105 poll+
+ups.status OL
+@1700000200 poll+
+ups.status OB
+@1700000265 poll+
+ups.status OL
+@1700000300 poll+
+ups.status OB
+@1700004025 poll+
+ups.status OL
+@1700010000 poll+
+ups.status OB
+@1700100000 poll+
+ups.status OL

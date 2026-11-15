@@ -16,7 +16,15 @@
 //!
 //! Times are Unix seconds. A line is a variable and its value (the rest
 //! of the line), `-name` for a variable that went away, or a `!` marker.
-//! Lines from one poll share a time.
+//! Lines from one poll share a time. Backslashes, newlines and carriage
+//! returns in values are escaped as `\\`, `\n` and `\r`.
+//!
+//! # Stability
+//!
+//! The format is `upst journal 1` and stays readable: new markers may be
+//! added (readers skip `!` markers they do not know), and the existing
+//! lines keep their meaning. A format that old readers would misread gets
+//! a new version number in the header.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -24,13 +32,16 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+/// The format version in the header line.
 pub const VERSION: u32 = 1;
 /// The recorder writes at least this often while it runs.
 pub const TICK: f64 = 60.0;
 /// A longer silence means the recorder was not running.
 pub const GAP: f64 = TICK * 2.5;
 
+/// What a journal line says. New markers may be added in minor versions.
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum Kind {
     /// The recorder started; nothing is known since the previous record.
     Start,
@@ -42,21 +53,29 @@ pub enum Kind {
     NoData(String),
     /// Still running, nothing changed.
     Tick,
+    /// A variable and its new value.
     Set(String, String),
+    /// A variable went away.
     Unset(String),
 }
 
+/// One journal line.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Record {
+    /// Unix seconds.
     pub t: f64,
+    /// What happened then.
     pub kind: Kind,
 }
 
 impl Record {
+    /// A record of `kind` at `t`.
     pub fn new(t: f64, kind: Kind) -> Self {
         Record { t, kind }
     }
 
+    /// Parse one line, with or without its line ending; `None` for the
+    /// header, comments, unknown markers and garbage.
     pub fn parse(line: &str) -> Option<Record> {
         let line = line.strip_suffix('\n').unwrap_or(line);
         let line = line.strip_suffix('\r').unwrap_or(line);
@@ -84,6 +103,8 @@ impl Record {
     }
 }
 
+/// The journal line, without a line ending. Times are written as whole
+/// seconds.
 impl fmt::Display for Record {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = self.t.floor() as i64;
@@ -126,26 +147,36 @@ fn unescape(s: &str) -> String {
     out
 }
 
+/// How the polls went, as of a journal's last record.
 #[derive(Clone, Debug, Default, PartialEq)]
+#[non_exhaustive]
 pub enum Feed {
     /// After a start, before the first poll.
     #[default]
     Off,
+    /// Polls succeed.
     Up,
+    /// upsd is unreachable, and why.
     Down(String),
+    /// upsd has no data for the UPS, and why.
     NoData(String),
 }
 
 /// What a journal says at its last record.
 #[derive(Clone, Debug, Default)]
 pub struct State {
+    /// The variables and their values.
     pub vars: BTreeMap<String, String>,
+    /// How the polls went.
     pub feed: Feed,
+    /// The time of the first record.
     pub first: Option<f64>,
+    /// The time of the last record.
     pub last: Option<f64>,
 }
 
 impl State {
+    /// Take one more record into account.
     pub fn apply(&mut self, r: &Record) {
         self.first.get_or_insert(r.t);
         self.last = Some(r.t);
@@ -202,7 +233,7 @@ pub fn since(records: impl IntoIterator<Item = Record>, since: f64) -> Vec<Recor
     out
 }
 
-/// `ups@host:port` as a file name.
+/// The journal file name for a label such as `ups@host:port`.
 pub fn file_name(label: &str) -> String {
     let safe: String =
         label.chars().map(|c| if c.is_ascii_alphanumeric() || "@.:-_[]".contains(c) { c } else { '_' }).collect();
@@ -232,6 +263,8 @@ pub fn read(path: &Path) -> io::Result<Vec<Record>> {
     Ok(out)
 }
 
+/// Call `f` with every complete record of a journal file, in order; see
+/// [`read`].
 pub fn for_each(path: &Path, mut f: impl FnMut(Record)) -> io::Result<()> {
     let mut r = BufReader::new(File::open(path)?);
     let mut line = String::new();
@@ -252,7 +285,9 @@ pub fn for_each(path: &Path, mut f: impl FnMut(Record)) -> io::Result<()> {
 
 /// An open journal being appended to.
 pub struct Journal {
+    /// The UPS label, e.g. `ups@localhost`.
     pub label: String,
+    /// The journal file.
     pub path: PathBuf,
     out: BufWriter<File>,
     /// What the file says so far.
@@ -264,21 +299,26 @@ impl Journal {
     /// state it ends in, and mark the start.
     pub fn open(dir: &Path, label: &str, t: f64) -> io::Result<Journal> {
         let path = dir.join(file_name(label));
-        let mut state = State::default();
-        let fresh = match fs::metadata(&path) {
-            Ok(m) if m.len() > 0 => {
-                for_each(&path, |r| state.apply(&r))?;
-                false
+        // A crash can leave half a line behind. It goes, rather than end up
+        // as a record with a cut-off value once a line follows it.
+        let len = match fs::metadata(&path) {
+            Ok(m) => {
+                let len = complete_len(&path)?;
+                if len < m.len() {
+                    OpenOptions::new().write(true).open(&path)?.set_len(len)?;
+                }
+                len
             }
-            _ => true,
+            Err(_) => 0,
         };
+        let mut state = State::default();
+        if len > 0 {
+            for_each(&path, |r| state.apply(&r))?;
+        }
         let file = OpenOptions::new().create(true).append(true).open(&path)?;
         let mut j = Journal { label: label.to_string(), path, out: BufWriter::new(file), state };
-        if fresh {
+        if len == 0 {
             j.out.write_all(header(label).as_bytes())?;
-        } else if !ends_with_newline(&j.path)? {
-            // A crash left half a line behind; start on a fresh one.
-            j.out.write_all(b"\n")?;
         }
         j.push(Record::new(t, Kind::Start))?;
         j.out.flush()?;
@@ -309,6 +349,7 @@ impl Journal {
         self.out.flush()
     }
 
+    /// Note that upsd is unreachable, unless that is already noted.
     pub fn down(&mut self, t: f64, why: &str) -> io::Result<()> {
         if !matches!(self.state.feed, Feed::Down(_)) {
             self.push(Record::new(t, Kind::Down(why.to_string())))?;
@@ -316,6 +357,8 @@ impl Journal {
         self.out.flush()
     }
 
+    /// Note that upsd has no data for the UPS, unless that is already
+    /// noted.
     pub fn no_data(&mut self, t: f64, why: &str) -> io::Result<()> {
         if !matches!(self.state.feed, Feed::NoData(_)) {
             self.push(Record::new(t, Kind::NoData(why.to_string())))?;
@@ -346,16 +389,23 @@ impl Journal {
     }
 }
 
-fn ends_with_newline(path: &Path) -> io::Result<bool> {
+/// The length of a file up to the end of its last complete line.
+fn complete_len(path: &Path) -> io::Result<u64> {
     use std::io::{Read, Seek, SeekFrom};
     let mut f = File::open(path)?;
-    if f.seek(SeekFrom::End(0))? == 0 {
-        return Ok(true);
+    let mut end = f.seek(SeekFrom::End(0))?;
+    let mut buf = [0u8; 4096];
+    while end > 0 {
+        let n = end.min(buf.len() as u64);
+        f.seek(SeekFrom::Start(end - n))?;
+        let chunk = &mut buf[..n as usize];
+        f.read_exact(chunk)?;
+        if let Some(i) = chunk.iter().rposition(|b| *b == b'\n') {
+            return Ok(end - n + i as u64 + 1);
+        }
+        end -= n;
     }
-    f.seek(SeekFrom::End(-1))?;
-    let mut b = [0u8];
-    f.read_exact(&mut b)?;
-    Ok(b[0] == b'\n')
+    Ok(0)
 }
 
 /// Rewrite a journal file without the records before `cutoff`; returns

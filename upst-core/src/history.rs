@@ -1,8 +1,28 @@
 //! In-memory time series behind the charts, sparklines and estimates.
-//! Times are seconds since the Unix epoch as f64.
+//! Times are seconds since the Unix epoch as `f64`.
 
 use std::collections::{HashMap, VecDeque};
 
+/// Numeric variables worth keeping a history of: not driver settings,
+/// serial numbers, versions, USB ids or dates, which are numbers too.
+///
+/// ```
+/// use upst_core::history::recordable;
+///
+/// assert!(recordable("battery.charge"));
+/// assert!(!recordable("driver.parameter.pollinterval") && !recordable("ups.vendorid"));
+/// ```
+pub fn recordable(name: &str) -> bool {
+    !(name.starts_with("driver.")
+        || name.contains("serial")
+        || name.contains("version")
+        || name.contains("vendorid")
+        || name.contains("productid")
+        || name.ends_with(".date")
+        || name.ends_with(".id"))
+}
+
+/// The values of one variable over time, as (Unix seconds, value) points.
 #[derive(Clone, Debug, Default)]
 pub struct Series {
     points: VecDeque<(f64, f64)>,
@@ -31,14 +51,22 @@ impl Series {
         }
     }
 
+    /// The number of points.
     pub fn len(&self) -> usize {
         self.points.len()
     }
 
+    /// Whether there are no points.
+    pub fn is_empty(&self) -> bool {
+        self.points.is_empty()
+    }
+
+    /// The newest point.
     pub fn last(&self) -> Option<(f64, f64)> {
         self.points.back().copied()
     }
 
+    /// The oldest point.
     pub fn first(&self) -> Option<(f64, f64)> {
         self.points.front().copied()
     }
@@ -56,6 +84,7 @@ impl Series {
         lead.into_iter().chain(self.points.range(start..).copied().take_while(move |p| p.0 <= t1))
     }
 
+    /// The lowest and highest value inside `[t0, t1]`.
     pub fn min_max(&self, t0: f64, t1: f64) -> Option<(f64, f64)> {
         self.window(t0, t1).fold(None, |acc, (_, v)| match acc {
             None => Some((v, v)),
@@ -150,13 +179,21 @@ impl Series {
 /// What a moment of the status timeline looked like.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Band {
+    /// On line power.
     Online,
+    /// On battery.
     Battery,
+    /// On battery, and the battery is low.
     Low,
+    /// Bypass, output off, or a status without a power source.
     Other,
+    /// Nothing known: no status, no connection, or nobody watching.
     NoData,
 }
 
+/// The time series of every recordable variable of a UPS and its status
+/// timeline, for a window of time.
+#[derive(Clone, Debug)]
 pub struct History {
     series: HashMap<String, Series>,
     bands: VecDeque<(f64, Band)>,
@@ -164,14 +201,24 @@ pub struct History {
     max_points: usize,
 }
 
+impl Default for History {
+    /// An hour, polled every 2 seconds.
+    fn default() -> Self {
+        History::new(3600.0, 2.0)
+    }
+}
+
 impl History {
+    /// A history that keeps `keep_secs` seconds of points, sized for
+    /// polls every `interval_secs`.
     pub fn new(keep_secs: f64, interval_secs: f64) -> Self {
         // Enough points for the whole window at the poll rate, with a
         // ceiling so a tiny interval cannot eat the memory.
-        let max_points = ((keep_secs / interval_secs.max(0.1)) as usize + 16).clamp(256, 200_000);
+        let max_points = ((keep_secs / interval_secs.max(0.1)) as usize).saturating_add(16).clamp(256, 200_000);
         History { series: HashMap::new(), bands: VecDeque::new(), keep: keep_secs, max_points }
     }
 
+    /// Add a value of `name` at `t`.
     pub fn record(&mut self, t: f64, name: &str, v: f64) {
         match self.series.get_mut(name) {
             Some(s) => s.push(t, v),
@@ -183,12 +230,14 @@ impl History {
         }
     }
 
+    /// Note the status band from `t` on.
     pub fn band(&mut self, t: f64, band: Band) {
         if self.bands.back().is_none_or(|b| b.1 != band) {
             self.bands.push_back((t, band));
         }
     }
 
+    /// Drop what is older than the window before `now`.
     pub fn trim(&mut self, now: f64) {
         let before = now - self.keep;
         for s in self.series.values_mut() {
@@ -199,10 +248,12 @@ impl History {
         }
     }
 
+    /// The series of one variable.
     pub fn get(&self, name: &str) -> Option<&Series> {
         self.series.get(name)
     }
 
+    /// The variables that have a series, in no particular order.
     pub fn names(&self) -> impl Iterator<Item = &str> {
         self.series.keys().map(String::as_str)
     }
@@ -225,8 +276,12 @@ impl History {
 
 /// Which way the charge is heading in the current segment.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum Trend {
+    /// The charge is going down.
     Discharging,
+    /// The charge is going up.
     Charging,
 }
 
@@ -234,7 +289,7 @@ pub enum Trend {
 /// turns its steps into a rate. Charge is usually reported in whole
 /// percent, so the rate is measured between step edges rather than fitted
 /// over the flat stretches.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Tracker {
     trend: Option<Trend>,
     start: (f64, f64),
@@ -242,6 +297,8 @@ pub struct Tracker {
 }
 
 impl Tracker {
+    /// Note the charge at `t` and which way it is heading, if any; a
+    /// change of direction starts a new segment.
     pub fn observe(&mut self, t: f64, charge: f64, trend: Option<Trend>) {
         if trend != self.trend {
             self.trend = trend;
@@ -258,10 +315,12 @@ impl Tracker {
         }
     }
 
+    /// Forget the current segment.
     pub fn reset(&mut self) {
         *self = Tracker::default();
     }
 
+    /// Which way the current segment goes.
     pub fn trend(&self) -> Option<Trend> {
         self.trend
     }

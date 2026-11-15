@@ -1,0 +1,215 @@
+# Status flags appearing and disappearing.
+#
+# Format (full description in ../README.md):
+#   === <name>              start a scenario (fresh Ups)
+#   capacity <Wh>           optional, before the first step
+#   @<t> poll               full variable list follows, one `<name> <value>` per line
+#   @<t> poll+              the previous poll's list; `<name> <value>` sets, `-<name>` removes
+#   @<t> down <why> | stale <why> | connecting | gap | estimate | state
+#   replay                  journal lines (journal.rs format) follow ...
+#   replay-until <t>        ... up to here; runs archive::replay
+#   Lines starting with # are comments; ` #` starts a comment on directive lines only.
+
+=== flags-info-set-and-cleared-one-at-a-time
+# HB, CAL, ECO and an unknown flag have set and clear events; TRIM and
+# BOOST only a set event; TEST, CHRG, DISCHRG and COMM none at all.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+battery.charge.low 20
+@1700000010 poll+
+ups.status OL HB
+@1700000020 poll+
+ups.status OL
+@1700000030 poll+
+ups.status OL CAL
+@1700000040 poll+
+ups.status OL
+@1700000050 poll+
+ups.status OL TRIM
+@1700000060 poll+
+ups.status OL
+@1700000070 poll+
+ups.status OL BOOST
+@1700000080 poll+
+ups.status OL
+@1700000090 poll+
+ups.status OL ECO
+@1700000100 poll+
+ups.status OL
+@1700000110 poll+
+ups.status OL TEST
+@1700000120 poll+
+ups.status OL
+@1700000130 poll+
+ups.status OL CHRG
+@1700000140 poll+
+ups.status OL
+@1700000150 poll+
+ups.status OL DISCHRG
+@1700000160 poll+
+ups.status OL
+@1700000170 poll+
+ups.status OL COMM
+@1700000180 poll+
+ups.status OL
+@1700000190 poll+
+ups.status OL XYZ
+@1700000200 poll+
+ups.status OL
+
+=== flags-warn-crit-set-and-cleared-one-at-a-time
+# RB, OVER, ALARM, NOCOMM have set and clear events; FSD only a set event.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OL RB
+@1700000020 poll+
+ups.status OL
+@1700000030 poll+
+ups.status OL OVER
+@1700000040 poll+
+ups.status OL
+@1700000050 poll+
+ups.status OL ALARM
+@1700000060 poll+
+ups.status OL
+@1700000070 poll+
+ups.status OL NOCOMM
+@1700000080 poll+
+ups.status OL
+@1700000090 poll+
+ups.status OL FSD
+@1700000095 state
+@1700000100 poll+
+ups.status OL
+
+=== flags-power-flags-one-at-a-time
+# OB, BYPASS and OFF also change the power source; OL itself is silent.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB
+@1700000020 poll+
+ups.status OL
+@1700000030 poll+
+ups.status OL BYPASS
+@1700000040 poll+
+ups.status OL
+@1700000050 poll+
+ups.status OL OFF
+@1700000060 poll+
+ups.status OL
+@1700000070 poll+
+ups.status
+@1700000080 poll+
+ups.status OL
+
+=== flags-several-at-once
+# Set events in the new order, then clear events in the old order.
+@1700000000 poll
+ups.status OL CHRG
+battery.charge 80
+@1700000010 poll+
+ups.status OL CHRG RB OVER ALARM XYZ HB
+@1700000020 poll+
+ups.status OL
+@1700000030 poll+
+ups.status NOCOMM TRIM OL CAL ECO
+@1700000040 poll+
+ups.status OB DISCHRG LB RB OFF BOOST
+battery.charge 15
+@1700000050 poll+
+ups.status OL CHRG
+battery.charge 16
+
+=== flags-lb-with-charge
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 25
+battery.charge.low 20
+@1700000060 poll+
+ups.status OB DISCHRG LB
+battery.charge 19
+@1700000120 poll+
+ups.status OB DISCHRG
+battery.charge 18
+@1700000180 poll+
+ups.status OB DISCHRG LB
+battery.charge 17
+@1700000240 poll+
+ups.status OL CHRG
+battery.charge 18
+
+=== flags-lb-without-charge
+@1700000000 poll
+ups.status OB DISCHRG
+@1700000060 poll
+ups.status OB DISCHRG LB
+@1700000120 poll
+ups.status OL
+
+=== flags-lb-charge-raw-text
+# The charge goes into the event text as reported: fractional, padded, empty.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 20.5
+@1700000060 poll+
+ups.status OB DISCHRG LB
+battery.charge 19.5
+@1700000120 poll+
+ups.status OB DISCHRG
+@1700000180 poll+
+ups.status OB DISCHRG LB
+battery.charge  19
+@1700000240 poll+
+ups.status OB DISCHRG
+@1700000300 poll+
+ups.status OB DISCHRG LB
+battery.charge
+@1700000360 poll+
+ups.status OB DISCHRG
+battery.charge n/a
+@1700000420 poll+
+ups.status OB DISCHRG LB
+
+=== flags-lb-while-online
+# LB without OB is not the Low band and not the LOW BATTERY headline.
+@1700000000 poll
+ups.status OL CHRG
+battery.charge 10
+@1700000060 poll+
+ups.status OL CHRG LB
+@1700000090 state
+@1700000120 poll+
+ups.status OL CHRG
+battery.charge 25
+
+=== flags-first-poll-says-nothing
+# The first poll never reports flags; an identical second poll neither.
+@1700000000 poll
+ups.status OL RB OVER ALARM NOCOMM XYZ
+ups.alarm Replace battery
+ups.test.result Done and failed
+battery.charge 100
+@1700000010 poll+
+@1700000020 poll+
+ups.status OL
+
+=== flags-duplicate-lowercase-and-spacing
+# Duplicated unknown tokens report twice; lowercase is unknown; spacing
+# alone changes nothing.
+@1700000000 poll
+ups.status OL
+@1700000010 poll
+ups.status OL XYZ XYZ
+@1700000020 poll
+ups.status "  OL    XYZ   XYZ  "
+@1700000030 poll
+ups.status OL
+@1700000040 poll
+ups.status ol
+@1700000050 poll
+ups.status OL

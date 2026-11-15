@@ -1,0 +1,113 @@
+=== tracker-window-speeds-up-and-drains
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 3 vars
+@1700000120 poll 3 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=5580.000 to_empty=5880.000 to_full=None watts=None
+@1700000180 poll 3 vars
+@1700000240 poll 3 vars
+@1700000300 poll 3 vars
+@1700000360 poll 3 vars
+@1700000420 poll 3 vars
+@1700000480 poll 3 vars
+@1700000540 poll 3 vars
+@1700000600 poll 3 vars
+@1700000660 poll 3 vars
+@1700000720 poll 3 vars
+@1700000720 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=4980.000 to_empty=5280.000 to_full=None watts=None
+@1700000780 poll 3 vars
+@1700000780 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=4920.000 to_empty=5220.000 to_full=None watts=None
+@1700000840 poll 3 vars
+@1700000900 poll 3 vars
+@1700000960 poll 3 vars
+@1700001020 poll 3 vars
+@1700001080 poll 3 vars
+@1700001140 poll 3 vars
+@1700001200 poll 3 vars
+@1700001260 poll 3 vars
+@1700001320 poll 3 vars
+@1700001380 poll 3 vars
+@1700001440 poll 3 vars
+@1700001500 poll 3 vars
+@1700001560 poll 3 vars
+@1700001620 poll 3 vars
+@1700001680 poll 3 vars
+@1700001740 poll 3 vars
+@1700001800 poll 3 vars
+@1700001800 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=3900.000 to_empty=4200.000 to_full=None watts=None
+@1700001830 poll 3 vars
+@1700001830 estimate
+  estimate trend=Discharging per_hour=-62.857143 rough=false to_low=3665.455 to_empty=3951.818 to_full=None watts=None
+@1700001860 poll 3 vars
+@1700001890 poll 3 vars
+@1700001920 poll 3 vars
+@1700001950 poll 3 vars
+@1700001950 estimate
+  estimate trend=Discharging per_hour=-77.647059 rough=false to_low=2781.818 to_empty=3013.636 to_full=None watts=None
+@1700001980 poll 3 vars
+@1700002010 poll 3 vars
+@1700002040 poll 3 vars
+@1700002070 poll 3 vars
+@1700002100 poll 3 vars
+@1700002130 poll 3 vars
+@1700002160 poll 3 vars
+@1700002160 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=1590.000 to_empty=1740.000 to_full=None watts=None
+@1700002190 poll 3 vars
+@1700002190 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=1560.000 to_empty=1710.000 to_full=None watts=None
+@1700002220 poll 3 vars
+@1700002250 poll 3 vars
+@1700002280 poll 3 vars
+@1700002310 poll 3 vars
+@1700002340 poll 3 vars
+@1700002370 poll 3 vars
+@1700002400 poll 3 vars
+@1700002430 poll 3 vars
+@1700002460 poll 3 vars
+@1700002490 poll 3 vars
+@1700002520 poll 3 vars
+@1700002550 poll 3 vars
+@1700002580 poll 3 vars
+@1700002610 poll 3 vars
+@1700002640 poll 3 vars
+@1700002670 poll 3 vars
+@1700002700 poll 3 vars
+@1700002730 poll 3 vars
+@1700002760 poll 3 vars
+@1700002790 poll 3 vars
+@1700002820 poll 3 vars
+@1700002820 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=930.000 to_empty=1080.000 to_full=None watts=None
+@1700002850 poll 3 vars
+@1700002850 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=900.000 to_empty=1050.000 to_full=None watts=None
+@1700002880 poll 3 vars
+@1700002880 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=870.000 to_empty=1020.000 to_full=None watts=None
+@1700002910 poll 3 vars
+@1700002940 poll 3 vars
+@1700002970 poll 3 vars
+@1700003000 poll 3 vars
+@1700003000 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=750.000 to_empty=900.000 to_full=None watts=None
+@1700003044 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=750.000 to_empty=900.000 to_full=None watts=None
+@1700003046 estimate
+  estimate trend=Discharging per_hour=-105.319149 rough=false to_low=854.545 to_empty=1025.455 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=71 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700003000.0
+var battery.charge "30"
+var battery.charge.low "5"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("31") at=1700003000.0
+bands 1700000000..1700003046 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000060:99 1700000120:98 1700000180:97 1700000240:96 1700000300:95 1700000360:94 1700000420:93 1700000480:92 1700000540:91 1700000600:90 1700000660:89 1700000720:88 1700000780:87 1700000840:86 1700000900:85 1700000960:84 1700001020:83 1700001080:82 1700001140:81 1700001200:80 1700001260:79 1700001320:78 1700001380:77 1700001440:76 1700001500:75 1700001560:74 1700001620:73 1700001680:72 1700001740:71 1700001800:70 1700001830:69 1700001860:68 1700001890:67 1700001920:66 1700001950:65 1700001980:64 1700002010:63 1700002040:62 1700002070:61 1700002100:60 1700002130:59 1700002160:58 1700002190:57 1700002220:56 1700002250:55 1700002280:54 1700002310:53 1700002340:52 1700002370:51 1700002400:50 1700002430:49 1700002460:48 1700002490:47 1700002520:46 1700002550:45 1700002580:44 1700002610:43 1700002640:42 1700002670:41 1700002700:40 1700002730:39 1700002760:38 1700002790:37 1700002820:36 1700002850:35 1700002880:34 1700002910:33 1700002940:32 1700002970:31 1700003000:30
+series battery.charge.low 1700000000:5 1700003000:5
+charge_at 1700000000=100 1700000761.500=88 1700001523=75 1700002284.500=54 1700003046=30
+now=1700003046 estimate trend=Discharging per_hour=-105.319149 rough=false to_low=854.545 to_empty=1025.455 to_full=None watts=None

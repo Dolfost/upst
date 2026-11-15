@@ -2,18 +2,14 @@ mod app;
 mod archive;
 mod cli;
 mod config;
-mod demo;
 mod fmt;
-mod history;
-mod journal;
 mod model;
-mod nut;
 mod once;
 mod recorder;
-mod status;
-mod target;
 mod ui;
-mod worker;
+
+// What moved to the library keeps its old paths, as in `crate::status`.
+use upst_core::{demo, history, journal, nut, poll, status, target};
 
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -30,12 +26,12 @@ use ratatui::crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, E
 use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 
-use app::{App, Options};
+use app::{App, Options, Update};
 use cli::{Cli, Command, RecordArgs};
+use poll::Poller;
 use recorder::{Addr, Recorder};
 use target::{Server, Target};
 use ui::Theme;
-use worker::Update;
 
 fn main() -> ExitCode {
     let matches = Cli::command().get_matches();
@@ -117,12 +113,12 @@ fn record(args: &RecordArgs) -> anyhow::Result<()> {
 }
 
 /// The demo's upsd, and a recorder that already holds an hour of it.
-fn start_demo(timeout: Duration) -> anyhow::Result<(Server, Addr, PathBuf)> {
-    let (server, past) = demo::start_with_history(3600.0, 5.0).context("starting the demo server")?;
+fn start_demo(timeout: Duration) -> anyhow::Result<(demo::Server, Addr, PathBuf)> {
+    let (server, past) = demo::Server::spawn_with_history(3600.0, 5.0).context("starting the demo server")?;
     let dir = std::env::temp_dir().join(format!("upst-demo-{}", std::process::id()));
     let sock = Addr::Unix(dir.join("upst.sock"));
     let cfg = recorder::Config {
-        groups: vec![(server.clone(), None)],
+        groups: vec![(server.target(), None)],
         interval: Duration::from_secs(5),
         timeout,
         keep: Duration::from_secs(86400),
@@ -139,19 +135,19 @@ fn start_demo(timeout: Duration) -> anyhow::Result<(Server, Addr, PathBuf)> {
 }
 
 fn run(cli: Cli) -> anyhow::Result<ExitCode> {
-    let mut demo_dir = None;
-    let mut demo_recorder = None;
-    let targets = if cli.demo {
-        if cli.once || cli.json || cli.no_recorder {
-            vec![Target { ups: None, server: demo::start().context("starting the demo server")? }]
-        } else {
-            let (server, sock, dir) = start_demo(cli.timeout)?;
-            demo_dir = Some(dir);
-            demo_recorder = Some(sock);
-            vec![Target { ups: None, server }]
-        }
+    // The demo's upsd stops when its handle is dropped, at the end of the run.
+    let (demo_server, demo_recorder) = if !cli.demo {
+        (None, None)
+    } else if cli.once || cli.json || cli.no_recorder {
+        (Some(demo::Server::spawn().context("starting the demo server")?), None)
     } else {
-        targets_or_localhost(&cli.targets)
+        let (server, sock, dir) = start_demo(cli.timeout)?;
+        (Some(server), Some((sock, dir)))
+    };
+    let (demo_recorder, demo_dir) = demo_recorder.unzip();
+    let targets = match &demo_server {
+        Some(s) => vec![Target { ups: None, server: s.target() }],
+        None => targets_or_localhost(&cli.targets),
     };
     let groups = group(&targets);
     if cli.once || cli.json {
@@ -190,16 +186,15 @@ fn run(cli: Cli) -> anyhow::Result<ExitCode> {
         app.set_recorder(archive::spawn(addrs, named, cli.timeout, tx.clone()));
     }
     for (index, (server, names)) in groups.iter().enumerate() {
-        let cfg = worker::Config {
-            index,
-            server: server.clone(),
-            names: names.clone(),
-            interval,
-            timeout: cli.timeout,
-            meta: true,
-        };
-        let req = worker::spawn(cfg, tx.clone());
-        app.add_server(server.clone(), req, names.as_deref());
+        let mut cfg = poll::Config::new(server.clone());
+        cfg.names = names.clone();
+        cfg.interval = interval;
+        cfg.timeout = cli.timeout;
+        cfg.meta = true;
+        let tx = tx.clone();
+        let poller = Poller::spawn(cfg, move |u| tx.send(Update::Server(index, u)).is_ok())
+            .with_context(|| format!("starting the poller for {server}"))?;
+        app.add_server(server.clone(), Some(poller), names.as_deref());
     }
     drop(tx);
     let result = tui(&mut app, rx, !cli.no_mouse);

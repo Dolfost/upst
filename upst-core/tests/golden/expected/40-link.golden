@@ -1,0 +1,190 @@
+=== link-connecting-down-first
+@1700000000 down Connection refused
+  1700000000 Crit Cannot reach upsd: Connection refused
+@1700000010 down Connection refused
+@1700000020 down No route to host
+@1700000030 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000030, false) since=1700000030 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000030 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000030:100
+charge_at 1700000000=None 1700000007.500=None 1700000015=None 1700000022.500=None 1700000030=100
+now=1700000030 estimate None
+
+=== link-connecting-down-after-polls
+@1700000000 poll 2 vars
+@1700000010 connecting
+@1700000020 down Connection refused
+@1700000030 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000030:100
+charge_at 1700000000=100 1700000007.500=100 1700000015=100 1700000022.500=100 1700000030=100
+now=1700000030 estimate None
+
+=== link-connecting-stale-first
+@1700000000 stale Driver not connected
+  1700000000 Warn No data: Driver not connected
+@1700000010 poll 2 vars
+  1700000010 Good UPS data is fresh again (was: Driver not connected)
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000010, false) since=1700000010 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000010.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000010 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000010:100
+charge_at 1700000000=None 1700000002.500=None 1700000005=None 1700000007.500=None 1700000010=100
+now=1700000010 estimate None
+
+=== link-connecting-stale-then-down
+@1700000000 stale Driver not connected
+  1700000000 Warn No data: Driver not connected
+@1700000010 down Connection refused
+  1700000010 Crit Lost upsd: Connection refused
+@1700000020 poll 1 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000020, false) since=1700000020 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000020.0
+var ups.status "OL"
+bands 1700000000..1700000020 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000020 estimate None
+
+=== link-up-stale-up
+@1700000000 poll 2 vars
+@1700000010 stale Driver not connected
+  1700000010 Warn No data: Driver not connected
+@1700000015 stale Driver not connected
+@1700000020 stale Data stale
+@1700000030 poll 2 vars
+  1700000030 Good UPS data is fresh again (was: Data stale)
+@1700000040 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000040.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000040 Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000040:100
+charge_at 1700000000=100 1700000010=100 1700000020=100 1700000030=100 1700000040=100
+now=1700000040 estimate None
+
+=== link-up-down-up
+@1700000000 poll 2 vars
+@1700000010 down Connection refused
+  1700000010 Crit Lost upsd: Connection refused
+@1700000020 down Connection refused
+@1700000030 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000030:100
+charge_at 1700000000=100 1700000007.500=100 1700000015=100 1700000022.500=100 1700000030=100
+now=1700000030 estimate None
+
+=== link-stale-to-down
+@1700000000 poll 1 vars
+@1700000010 stale Driver not connected
+  1700000010 Warn No data: Driver not connected
+@1700000020 down Connection reset by peer
+  1700000020 Crit Lost upsd: Connection reset by peer
+@1700000030 poll 1 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var ups.status "OL"
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000030 estimate None
+
+=== link-down-to-stale
+@1700000000 poll 1 vars
+@1700000010 down Connection refused
+  1700000010 Crit Lost upsd: Connection refused
+@1700000020 stale Driver not connected
+@1700000030 poll 1 vars
+  1700000030 Good UPS data is fresh again (was: Driver not connected)
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var ups.status "OL"
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000030 estimate None
+
+=== link-gap-then-poll
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 2 vars
+@1700000100 gap
+@1700000110 state
+state link=Down("not recorded") outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=2 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=None updated=1700000060.0
+var battery.charge "79"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("80") at=1700000060.0
+bands 1700000000..1700000110 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData
+series battery.charge 1700000000:80 1700000060:79
+charge_at 1700000000=80 1700000027.500=80 1700000055=80 1700000082.500=79 1700000110=79
+now=1700000110 estimate None
+@1700000120 down not recorded
+@1700000130 down Connection refused
+@1700000200 poll 2 vars
+  1700000200 Good Power restored after 3m 20s on battery
+@1700000210 down Connection refused
+  1700000210 Crit Lost upsd: Connection refused
+--- end
+state link=Down("Connection refused") outages=0 battery_secs=200.000 outage_start=None power_since=(1700000200, true) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=None updated=1700000200.0
+var battery.charge "79"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("80") at=1700000060.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000200.0
+bands 1700000000..1700000210 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online
+series battery.charge 1700000000:80 1700000060:79 1700000200:79
+charge_at 1700000000=80 1700000052.500=80 1700000105=79 1700000157.500=79 1700000210=79
+now=1700000210 estimate None
+
+=== link-gap-before-any-poll
+@1700000000 gap
+@1700000010 down Connection refused
+@1700000020 poll 2 vars
+  1700000020 Warn Running on battery
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000020 power_since=(1700000020, false) since=1700000020 polls=1 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB"] severity=Warn trend=Some(Discharging) updated=1700000020.0
+var battery.charge "50"
+var ups.status "OB"
+bands 1700000000..1700000020 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000020:50
+charge_at 1700000000=None 1700000005=None 1700000010=None 1700000015=None 1700000020=50
+now=1700000020 estimate None
+
+=== link-loss-during-outage
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000040 down Connection refused
+  1700000040 Crit Lost upsd: Connection refused
+@1700000100 stale Driver not connected
+@1700000150 poll 2 vars
+  1700000150 Good UPS data is fresh again (was: Driver not connected)
+  1700000150 Good Power restored after 2m 20s on battery
+--- end
+state link=Up outages=1 battery_secs=140.000 outage_start=None power_since=(1700000150, true) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000150.0
+var battery.charge "100"
+var ups.status "OL CHRG"
+changed ups.status prev=Some("OB DISCHRG") at=1700000150.0
+bands 1700000000..1700000150 Online,Battery,Battery,Battery,Battery,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000150:100
+charge_at 1700000000=100 1700000037.500=100 1700000075=100 1700000112.500=100 1700000150=100
+now=1700000150 estimate None

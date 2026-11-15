@@ -1,0 +1,289 @@
+=== power-ol-ob-ol
+@1700000000 poll 3 vars
+@1700000010 poll 3 vars
+  1700000010 Warn Power failure, running on battery
+@1700000070 poll 3 vars
+  1700000070 Crit Battery low (19%)
+@1700000100 state
+state link=Up outages=1 battery_secs=0.000 outage_start=1700000010 power_since=(1700000010, true) since=1700000000 polls=3 headline="LOW BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG", "LB"] severity=Crit trend=Some(Discharging) updated=1700000070.0
+var battery.charge "19"
+var battery.charge.low "20"
+var ups.status "OB DISCHRG LB"
+changed battery.charge prev=Some("100") at=1700000070.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000070.0
+bands 1700000000..1700000100 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Low,Low,Low,Low,Low,Low
+series battery.charge 1700000000:100 1700000010:100 1700000070:19
+series battery.charge.low 1700000000:20 1700000070:20
+charge_at 1700000000=100 1700000025=100 1700000050=100 1700000075=19 1700000100=19
+now=1700000100 estimate trend=Discharging per_hour=-3240.000000 rough=true to_low=None to_empty=21.111 to_full=None watts=None
+@1700000130 poll 3 vars
+  1700000130 Good Power restored after 2m 00s on battery
+  1700000130 Good Battery no longer low
+--- end
+state link=Up outages=1 battery_secs=120.000 outage_start=None power_since=(1700000130, true) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000130.0
+var battery.charge "20"
+var battery.charge.low "20"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("19") at=1700000130.0
+changed ups.status prev=Some("OB DISCHRG LB") at=1700000130.0
+bands 1700000000..1700000130 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Low,Low,Low,Low,Low,Low,Low,Low,Low
+series battery.charge 1700000000:100 1700000010:100 1700000070:19 1700000130:20
+series battery.charge.low 1700000000:20 1700000130:20
+charge_at 1700000000=100 1700000032.500=100 1700000065=100 1700000097.500=19 1700000130=20
+now=1700000130 estimate None
+
+=== power-ob-to-bypass
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000055 poll 2 vars
+  1700000055 Good Left battery power after 45s on battery
+  1700000055 Warn UPS switched to bypass, the load is unprotected
+@1700000100 poll 2 vars
+  1700000100 Good Bypass ended
+--- end
+state link=Up outages=1 battery_secs=45.000 outage_start=None power_since=(1700000100, true) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000100.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("BYPASS") at=1700000100.0
+bands 1700000000..1700000100 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Other,Other,Other,Other,Other,Other,Other,Other,Other
+series battery.charge 1700000000:100 1700000100:100
+charge_at 1700000000=100 1700000025=100 1700000050=100 1700000075=100 1700000100=100
+now=1700000100 estimate None
+
+=== power-ob-to-off-and-back
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000075 poll 2 vars
+  1700000075 Good Left battery power after 1m 05s on battery
+  1700000075 Warn UPS output switched off
+@1700000200 poll 2 vars
+  1700000200 Good UPS output back on
+--- end
+state link=Up outages=1 battery_secs=65.000 outage_start=None power_since=(1700000200, true) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000200.0
+var battery.charge "100"
+var ups.status "OL CHRG"
+changed ups.status prev=Some("OFF") at=1700000200.0
+bands 1700000000..1700000200 Online,Battery,Battery,Battery,Battery,Battery,Battery,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other
+series battery.charge 1700000000:100 1700000200:100
+charge_at 1700000000=100 1700000050=100 1700000100=100 1700000150=100 1700000200=100
+now=1700000200 estimate None
+
+=== power-ob-to-no-status
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000040 poll 2 vars
+  1700000040 Good Left battery power after 30s on battery
+@1700000050 poll 2 vars
+  1700000050 Warn Power failure, running on battery
+@1700000080 poll 1 vars
+  1700000080 Good Left battery power after 30s on battery
+@1700000090 state
+state link=Up outages=2 battery_secs=60.000 outage_start=None power_since=(1700000080, true) since=1700000000 polls=5 headline="NO STATUS" power=Unknown capacity_wh=None capacity_guessed=false
+status tokens=[] severity=Info trend=None updated=1700000080.0
+var battery.charge "100"
+bands 1700000000..1700000090 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData
+series battery.charge 1700000000:100 1700000080:100
+charge_at 1700000000=100 1700000022.500=100 1700000045=100 1700000067.500=100 1700000090=100
+now=1700000090 estimate None
+@1700000100 poll 2 vars
+--- end
+state link=Up outages=2 battery_secs=60.000 outage_start=None power_since=(1700000100, true) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000100.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=None at=1700000100.0
+bands 1700000000..1700000100 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000100:100
+charge_at 1700000000=100 1700000025=100 1700000050=100 1700000075=100 1700000100=100
+now=1700000100 estimate None
+
+=== power-ol-bypass-ol
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn UPS switched to bypass, the load is unprotected
+@1700000070 poll 2 vars
+  1700000070 Good Bypass ended
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000070, true) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000070.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("OL BYPASS") at=1700000070.0
+bands 1700000000..1700000070 Online,Online,Online,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other,Other
+series battery.charge 1700000000:100 1700000070:100
+charge_at 1700000000=100 1700000017.500=100 1700000035=100 1700000052.500=100 1700000070=100
+now=1700000070 estimate None
+
+=== power-ob-and-bypass-together
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+  1700000010 Warn UPS switched to bypass, the load is unprotected
+@1700000030 poll 2 vars
+  1700000030 Good Left battery power after 20s on battery
+@1700000040 poll 2 vars
+  1700000040 Warn UPS output switched off
+  1700000040 Good Bypass ended
+@1700000050 poll 2 vars
+  1700000050 Good UPS output back on
+--- end
+state link=Up outages=1 battery_secs=20.000 outage_start=None power_since=(1700000050, true) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000050.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("OL OFF") at=1700000050.0
+bands 1700000000..1700000050 Online,Online,Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Other,Other,Other,Other,Other,Other,Other,Other
+series battery.charge 1700000000:100 1700000050:100
+charge_at 1700000000=100 1700000012.500=100 1700000025=100 1700000037.500=100 1700000050=100
+now=1700000050 estimate None
+
+=== power-first-poll-on-battery
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000090 poll 2 vars
+  1700000090 Good Power restored after 1m 30s on battery
+--- end
+state link=Up outages=0 battery_secs=90.000 outage_start=None power_since=(1700000090, true) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000090.0
+var battery.charge "89"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("90") at=1700000090.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000090.0
+bands 1700000000..1700000090 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:90 1700000090:89
+charge_at 1700000000=90 1700000022.500=90 1700000045=90 1700000067.500=90 1700000090=89
+now=1700000090 estimate None
+
+=== power-first-poll-on-battery-low
+@1700000000 poll 3 vars
+  1700000000 Crit Running on battery
+@1700000030 poll 3 vars
+  1700000030 Good Battery no longer low
+@1700000060 poll 3 vars
+  1700000060 Good Power restored after 1m 00s on battery
+--- end
+state link=Up outages=0 battery_secs=60.000 outage_start=None power_since=(1700000060, true) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000060.0
+var battery.charge "9"
+var battery.charge.low "10"
+var ups.status "OL CHRG"
+changed ups.status prev=Some("OB DISCHRG") at=1700000060.0
+bands 1700000000..1700000060 Low,Low,Low,Low,Low,Low,Low,Low,Low,Low,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:9 1700000060:9
+series battery.charge.low 1700000000:10 1700000060:10
+charge_at 1700000000=9 1700000015=9 1700000030=9 1700000045=9 1700000060=9
+now=1700000060 estimate None
+
+=== power-first-poll-on-battery-fsd
+@1700000000 poll 2 vars
+  1700000000 Crit Running on battery
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=1 headline="FORCED SHUTDOWN" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "FSD"] severity=Crit trend=Some(Discharging) updated=1700000000.0
+var battery.charge "5"
+var ups.status "OB FSD"
+bands 1700000000..1700000000 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:5
+charge_at 1700000000=5 1700000000=5 1700000000=5 1700000000=5 1700000000=5
+now=1700000000 estimate None
+
+=== power-first-poll-on-battery-overload
+@1700000000 poll 2 vars
+  1700000000 Crit Running on battery
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=1 headline="OVERLOAD" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "OVER"] severity=Crit trend=Some(Discharging) updated=1700000000.0
+var battery.charge "50"
+var ups.status "OB OVER"
+bands 1700000000..1700000000 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:50
+charge_at 1700000000=50 1700000000=50 1700000000=50 1700000000=50 1700000000=50
+now=1700000000 estimate None
+
+=== power-first-poll-no-status-then-ob
+@1700000000 poll 1 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000020 poll 2 vars
+  1700000020 Good Power restored after 10s on battery
+--- end
+state link=Up outages=1 battery_secs=10.000 outage_start=None power_since=(1700000020, true) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000020.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("OB") at=1700000020.0
+bands 1700000000..1700000020 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000020:100
+charge_at 1700000000=100 1700000005=100 1700000010=100 1700000015=100 1700000020=100
+now=1700000020 estimate None
+
+=== power-multiple-outages
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Warn Power failure, running on battery
+@1700000070 poll 2 vars
+  1700000070 Good Power restored after 1m 00s on battery
+@1700000100 poll 2 vars
+  1700000100 Warn Power failure, running on battery
+@1700000400 poll 2 vars
+  1700000400 Good Power restored after 5m 00s on battery
+@1700000500 poll 2 vars
+  1700000500 Warn Power failure, running on battery
+@1700000600 state
+state link=Up outages=3 battery_secs=360.000 outage_start=1700000500 power_since=(1700000500, true) since=1700000000 polls=6 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000500.0
+var battery.charge "100"
+var ups.status "OB DISCHRG"
+changed ups.status prev=Some("OL CHRG") at=1700000500.0
+bands 1700000000..1700000600 Battery,Battery,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Online,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000500:100
+charge_at 1700000000=100 1700000150=100 1700000300=100 1700000450=100 1700000600=100
+now=1700000600 estimate None
+@1700000700 poll 2 vars
+  1700000700 Crit Battery low (100%)
+--- end
+state link=Up outages=3 battery_secs=360.000 outage_start=1700000500 power_since=(1700000500, true) since=1700000000 polls=7 headline="LOW BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG", "LB"] severity=Crit trend=Some(Discharging) updated=1700000700.0
+var battery.charge "100"
+var ups.status "OB DISCHRG LB"
+changed ups.status prev=Some("OB DISCHRG") at=1700000700.0
+bands 1700000000..1700000700 Battery,Battery,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000700:100
+charge_at 1700000000=100 1700000175=100 1700000350=100 1700000525=100 1700000700=100
+now=1700000700 estimate None
+
+=== power-outage-duration-texts
+@1700000000 poll 2 vars
+@1700000100 poll 2 vars
+  1700000100 Warn Power failure, running on battery
+@1700000105 poll 2 vars
+  1700000105 Good Power restored after 5s on battery
+@1700000200 poll 2 vars
+  1700000200 Warn Power failure, running on battery
+@1700000265 poll 2 vars
+  1700000265 Good Power restored after 1m 05s on battery
+@1700000300 poll 2 vars
+  1700000300 Warn Power failure, running on battery
+@1700004025 poll 2 vars
+  1700004025 Good Power restored after 1h 02m on battery
+@1700010000 poll 2 vars
+  1700010000 Warn Power failure, running on battery
+@1700100000 poll 2 vars
+  1700100000 Good Power restored after 1d 1h on battery
+--- end
+state link=Up outages=4 battery_secs=93795.000 outage_start=None power_since=(1700100000, true) since=1700000000 polls=9 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700100000.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("OB") at=1700100000.0
+bands 1700000000..1700100000 NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700100000:100
+charge_at 1700000000=100 1700025000=100 1700050000=100 1700075000=100 1700100000=100
+now=1700100000 estimate None

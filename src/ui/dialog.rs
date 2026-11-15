@@ -10,8 +10,8 @@ use super::overview::wrap;
 use super::{Ctx, Theme, centered, popup};
 use crate::app::{Dialog, Hit, Input};
 use crate::model::dangerous;
+use crate::poll::Action;
 use crate::status::Severity;
-use crate::worker::Action;
 
 pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx) {
     let app = cx.app;
@@ -96,7 +96,7 @@ fn commands(f: &mut Frame, area: Rect, cx: &mut Ctx, selected: usize) {
     let w = area.width.saturating_sub(4).min(90);
     let h = (u.cmds.len() as u16 + 4).min(area.height.saturating_sub(2));
     let r = centered(area, w, h);
-    let inner = popup(f, r, &t, &format!("Instant commands for {}", u.name), None);
+    let inner = popup(f, r, &t, &format!("Instant commands for {}", u.name()), None);
     let list_h = inner.height.saturating_sub(2) as usize;
     let name_w = u.cmds.iter().map(|c| c.name.len()).max().unwrap_or(10) + 2;
     let start = selected.saturating_sub(list_h.saturating_sub(1));
@@ -142,7 +142,7 @@ fn confirm(
     let tw = w.saturating_sub(2) as usize;
     let mut lines = vec![Line::from(vec![
         Span::styled(action.describe(), t.value().patch(if danger { t.sev(Severity::Crit) } else { Style::new() })),
-        Span::styled(format!(" on {}", u.label), t.dim()),
+        Span::styled(format!(" on {}", u.label()), t.dim()),
     ])];
     if let Some(d) = desc {
         lines.extend(wrap(d, tw, t.dim()));
@@ -233,7 +233,7 @@ fn edit(
     let tw = w.saturating_sub(2) as usize;
     let mut lines = vec![Line::from(vec![
         Span::styled(var.to_string(), t.value()),
-        Span::styled(format!(" on {}", u.label), t.dim()),
+        Span::styled(format!(" on {}", u.label()), t.dim()),
     ])];
     if let Some(d) = info.and_then(|i| i.desc.as_deref()) {
         lines.extend(wrap(d, tw, t.dim()));

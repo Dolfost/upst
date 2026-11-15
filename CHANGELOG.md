@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- The protocol client, the UPS model, the pollers, the journal and the demo server are now a library crate, [upst-core](upst-core), for other programs to build on; upst depends on it and works as before.
+- Recorded history in which a poll and the loss of upsd fall in the same second now ends with upsd lost, instead of a live connection that was not there.
+- The "Battery low" event shows the charge as a number, without the driver's padding, and leaves it out when the driver reports none.
 - upst polls every second by default (was 2 s), so live readings such as a power station's grid voltage keep up; `-i` and `<`/`>` still change it.
 - The Load card shows `input.realpower` as "Input": what comes in from the grid or a charger, which power stations report and which is the only input figure of a link without volts.
 - The Load card's outlet list is no longer capped at eight: at natural height every outlet is listed, and a card shrunk by a short terminal fits as many as its rows allow, ending with how many more the Variables view has.

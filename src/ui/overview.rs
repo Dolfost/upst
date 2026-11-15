@@ -19,7 +19,7 @@ use crate::app::{ServerLink, WINDOWS};
 use crate::fmt;
 use crate::history::Trend;
 use crate::model::{Link, Ups, unix};
-use crate::status::{Severity, flag_info};
+use crate::status::{FlagInfo, Severity, flag_info};
 
 const LW: usize = 10;
 
@@ -216,13 +216,13 @@ fn render(f: &mut Frame, rect: Rect, cx: &Ctx, u: &Ups, card: Card, extra: u16) 
     let mut block = t.block(false).title(format!(" {} ", card.title()));
     let title_right = match card {
         Card::Trends => Some(fmt::span(WINDOWS[cx.app.hist.window])),
-        Card::Status => u.updated.map(|at| {
+        Card::Status => u.updated().map(|at| {
             let every = if cx.app.paused {
                 "paused".to_string()
             } else {
                 format!("every {}", fmt::duration(cx.app.interval.as_secs_f64()))
             };
-            format!("{}, {every}", fmt::ago(at.elapsed()))
+            format!("{}, {every}", fmt::ago(at.elapsed().unwrap_or_default()))
         }),
         _ => None,
     };
@@ -296,8 +296,8 @@ fn clock_in(secs: f64) -> String {
 fn status(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     let t = &cx.t;
     let app = cx.app;
-    let (head, sev) = match &u.link {
-        Link::Up => u.status.headline(),
+    let (head, sev) = match u.link() {
+        Link::Up => u.status().headline(),
         Link::Connecting => ("CONNECTING", Severity::Info),
         Link::Stale(_) => ("NO DATA", Severity::Warn),
         Link::Down(_) => ("NO CONNECTION", Severity::Crit),
@@ -307,8 +307,8 @@ fn status(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     let mut row = vec![Span::styled(format!(" {head} "), t.badge(sev))];
     let mut used = head.len() + 2;
     if u.is_live() {
-        for flag in u.status.extra_flags() {
-            let (label, fsev, _) = flag_info(flag);
+        for flag in u.status().extra_flags() {
+            let FlagInfo { label, severity: fsev, .. } = flag_info(flag);
             let label = if label.is_empty() { flag.to_string() } else { label.to_string() };
             if used + label.len() + 2 > w {
                 lines.push(Line::from(std::mem::take(&mut row)));
@@ -321,21 +321,21 @@ fn status(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     }
     lines.push(Line::from(row));
 
-    match &u.link {
+    match u.link() {
         Link::Down(e) | Link::Stale(e) => {
             lines.extend(wrap(e, w, t.sev(sev)));
             if let ServerLink::Down { retry_at, .. } = &app.servers[u.server].link {
                 let left = retry_at.saturating_duration_since(std::time::Instant::now()).as_secs();
                 lines.push(Line::from(dim(t, format!("retrying in {left}s"))));
             }
-            if u.polls > 0 {
-                let (last, _) = u.status.headline();
+            if u.polls() > 0 {
+                let (last, _) = u.status().headline();
                 lines.push(Line::from(dim(t, format!("last seen {}", last.to_lowercase()))));
             }
         }
-        Link::Connecting => lines.push(Line::from(dim(t, format!("connecting to {}", u.server_label)))),
+        Link::Connecting => lines.push(Line::from(dim(t, format!("connecting to {}", u.server_label())))),
         Link::Up => {
-            if let Some((age, seen)) = u.power_age() {
+            if let Some((age, seen)) = u.power_age(SystemTime::now()) {
                 let text = if seen {
                     format!("for {}, since {}", fmt::duration(age), clock_in(-age))
                 } else {
@@ -351,24 +351,24 @@ fn status(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     if let Some(r) = u.text("ups.test.result").filter(|r| *r != "No test initiated") {
         lines.push(kv(t, "Self-test", LW + 1, vec![val(t, r.to_string())]));
     }
-    if u.outages > 0 || u.outage_start.is_some() {
-        let what = match u.outages {
+    if u.outages() > 0 || u.outage_start().is_some() {
+        let what = match u.outages() {
             0 => "in progress".to_string(),
             n => format!(
                 "{n} in {}",
-                fmt::duration(u.since.and_then(|s| s.elapsed().ok()).map_or(0.0, |d| d.as_secs_f64()))
+                fmt::duration(u.since().and_then(|s| s.elapsed().ok()).map_or(0.0, |d| d.as_secs_f64()))
             ),
         };
-        let text = format!("{what}, {} on battery", fmt::duration(u.battery_total()));
+        let text = format!("{what}, {} on battery", fmt::duration(u.battery_total(SystemTime::now())));
         lines.push(kv(t, "Outages", LW + 1, vec![val(t, text)]));
     }
     lines
 }
 
 fn charge_severity(u: &Ups, charge: f64, low: Option<f64>, warn: Option<f64>) -> Severity {
-    if low.is_some_and(|l| charge <= l) || u.status.has("LB") {
+    if low.is_some_and(|l| charge <= l) || u.status().has("LB") {
         Severity::Crit
-    } else if warn.is_some_and(|w| charge <= w) || u.status.discharging() {
+    } else if warn.is_some_and(|w| charge <= w) || u.status().discharging() {
         Severity::Warn
     } else {
         Severity::Good
@@ -394,7 +394,7 @@ fn battery(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
         lines.push(kv(t, "Runtime", LW, v));
     }
 
-    let est = u.estimate(unix(SystemTime::now()));
+    let est = u.estimate(SystemTime::now());
     match &est {
         Some(e) => {
             let sev = if e.trend == Trend::Charging { Severity::Good } else { Severity::Warn };
@@ -421,12 +421,12 @@ fn battery(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
             }
             lines.push(kv(t, "Trend", LW, v));
         }
-        None if u.is_live() && (u.status.discharging() || u.status.charging()) => {
+        None if u.is_live() && (u.status().discharging() || u.status().charging()) => {
             lines.push(kv(t, "Trend", LW, vec![dim(t, "measuring, waits for the charge to move")]));
         }
         None => {}
     }
-    if let (Some(wh), Some(c)) = (u.capacity_wh, charge) {
+    if let (Some(wh), Some(c)) = (u.capacity_wh(), charge) {
         let mut v = vec![val(t, format!("~{} of {} Wh", fmt::num((wh * c / 100.0).round()), fmt::num(wh)))];
         if let Some(watts) = est.as_ref().and_then(|e| e.watts.map(|w| (w, e.trend))) {
             let dir = if watts.1 == Trend::Charging { "in" } else { "out" };
@@ -522,7 +522,7 @@ struct Outlet {
 
 fn outlets(u: &Ups) -> Vec<Outlet> {
     let mut ids: Vec<u32> =
-        u.vars.keys().filter_map(|k| k.strip_prefix("outlet.")?.split('.').next()?.parse().ok()).collect();
+        u.vars().keys().filter_map(|k| k.strip_prefix("outlet.")?.split('.').next()?.parse().ok()).collect();
     ids.sort_unstable();
     ids.dedup();
     let mut list: Vec<Outlet> = ids
@@ -706,7 +706,7 @@ const TREND_VARS: [(&str, &str); 8] = [
 ];
 
 fn trend_metrics(u: &Ups) -> Vec<(&'static str, &'static str)> {
-    TREND_VARS.iter().copied().filter(|(v, _)| u.history.get(v).is_some_and(|s| s.len() > 0)).collect()
+    TREND_VARS.iter().copied().filter(|(v, _)| u.series(v).is_some_and(|s| !s.is_empty())).collect()
 }
 
 fn trends(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
@@ -724,7 +724,7 @@ fn trends(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
     let sw = w.saturating_sub(LW + vw);
     let mut lines = Vec::new();
     for (var, label) in &metrics[..shown] {
-        let series = u.history.get(var).unwrap();
+        let series = u.series(var).unwrap();
         let cols = series.columns(now - window, now, sw);
         let percent = fmt::unit(var) == "%";
         let (lo, hi) =
@@ -793,8 +793,8 @@ fn device(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     row("Driver", driver);
     row("Beeper", u.text("ups.beeper.status").map(str::to_string));
     let watts = u.text("ups.realpower.nominal").map(|v| format!("{v} W"));
-    let size = if u.capacity_guessed {
-        u.capacity_wh.map(|wh| format!("{} Wh pack", fmt::num(wh)))
+    let size = if u.capacity_guessed() {
+        u.capacity_wh().map(|wh| format!("{} Wh pack", fmt::num(wh)))
     } else {
         u.text("ups.power.nominal").map(|v| format!("{v} VA"))
     };
@@ -805,8 +805,8 @@ fn device(cx: &Ctx, u: &Ups, w: usize) -> Vec<Line<'static>> {
     row("Rated", rated);
     let srv = &cx.app.servers[u.server];
     let server = match &srv.version {
-        Some(v) => format!("{}, {v}", u.server_label),
-        None => u.server_label.clone(),
+        Some(v) => format!("{}, {v}", u.server_label()),
+        None => u.server_label().to_string(),
     };
     row("Server", Some(server));
     row("Recorded", u.recorded.as_ref().map(|(via, since)| format!("since {}, {via}", fmt::when(*since))));
@@ -830,7 +830,7 @@ fn events(cx: &Ctx, u: &Ups, w: usize, extra: u16) -> Vec<Line<'static>> {
     let t = &cx.t;
     let rows = 4 + extra as usize;
     let mine: Vec<_> =
-        cx.app.log.iter().rev().filter(|e| e.ups == u.label || e.ups == u.server_label).take(rows).collect();
+        cx.app.log.iter().rev().filter(|e| e.ups == u.label() || e.ups == u.server_label()).take(rows).collect();
     if mine.is_empty() {
         return vec![Line::from(dim(t, "nothing yet"))];
     }
@@ -858,16 +858,16 @@ fn compact(f: &mut Frame, area: Rect, cx: &Ctx, u: &Ups) {
     let t = &cx.t;
     let w = area.width as usize;
     let lw = 5;
-    let (head, sev) = match &u.link {
-        Link::Up => u.status.headline(),
+    let (head, sev) = match u.link() {
+        Link::Up => u.status().headline(),
         Link::Connecting => ("CONNECTING", Severity::Info),
         Link::Stale(_) => ("NO DATA", Severity::Warn),
         Link::Down(_) => ("NO CONNECTION", Severity::Crit),
     };
     let mut first = vec![Span::styled(format!(" {head} "), t.badge(sev))];
     let mut used = head.len() + 2;
-    for flag in u.status.extra_flags().filter(|_| u.is_live()) {
-        let (label, fsev, _) = flag_info(flag);
+    for flag in u.status().extra_flags().filter(|_| u.is_live()) {
+        let FlagInfo { label, severity: fsev, .. } = flag_info(flag);
         let label = if label.is_empty() { flag } else { label };
         if used + label.len() + 1 > w {
             break;
@@ -884,7 +884,7 @@ fn compact(f: &mut Frame, area: Rect, cx: &Ctx, u: &Ups) {
         spans.push(val(t, value));
         lines.push(kv(t, "Batt", lw, spans));
     }
-    let est = u.estimate(unix(SystemTime::now()));
+    let est = u.estimate(SystemTime::now());
     let mut run = Vec::new();
     if let Some(r) = u.num("battery.runtime") {
         run.push(val(t, fmt::duration(r)));
@@ -918,7 +918,7 @@ fn compact(f: &mut Frame, area: Rect, cx: &Ctx, u: &Ups) {
     if !line.is_empty() {
         lines.push(kv(t, "Line", lw, line));
     }
-    if let Some(e) = cx.app.log.iter().rev().find(|e| e.ups == u.label || e.ups == u.server_label) {
+    if let Some(e) = cx.app.log.iter().rev().find(|e| e.ups == u.label() || e.ups == u.server_label()) {
         let text = format!("{} {}", e.at.format("%H:%M"), e.text);
         lines.push(Line::from(vec![Span::styled(t.stripe(), t.sev(e.severity)), dim(t, text)]));
     }

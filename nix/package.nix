@@ -11,10 +11,21 @@ rustPlatform.buildRustPackage {
 	# flake edits do not rebuild.
 	src = lib.fileset.toSource {
 		root = ../.;
-		fileset = lib.fileset.unions [ ../Cargo.toml ../Cargo.lock ../src ../contrib/config.toml ];
+		fileset = lib.fileset.unions [
+			../Cargo.toml
+			../Cargo.lock
+			../src
+			../contrib/config.toml
+			../upst-core/Cargo.toml
+			../upst-core/src
+			../upst-core/tests
+		];
 	};
 
 	cargoLock.lockFile = ../Cargo.lock;
+
+	# upst-core's tests too, with its serde feature.
+	cargoTestFlags = [ "--workspace" "--all-features" ];
 
 	meta = {
 		inherit (manifest) description;

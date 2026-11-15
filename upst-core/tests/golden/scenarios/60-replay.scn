@@ -1,0 +1,346 @@
+# archive::replay of recorder journals, and live steps after it.
+# Journal lines are in the journal.rs format: `<t> !start|!up|!tick`,
+# `<t> !down <why>`, `<t> !nodata <why>`, `<t> <name> <value>`, `<t> -<name>`.
+# GAP (a silence that means the recorder was not running) is 150 s.
+# Format: see ../README.md (or the header of 10-flags.scn).
+
+=== replay-normal-journal
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 battery.charge.low 20
+1700000000 ups.status OL
+1700000000 input.voltage 230
+1700000060 ups.status OB DISCHRG
+1700000060 input.voltage 0
+1700000120 battery.charge 99
+1700000180 !tick
+1700000240 battery.charge 98
+1700000300 battery.charge 97
+1700000360 ups.status OL CHRG
+1700000360 input.voltage 231
+1700000420 !tick
+1700000480 battery.charge 98
+replay-until 1700000500
+@1700000500 estimate
+
+=== replay-down-then-up
+# Reconnected comes before the events of the poll at the same time.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 !tick
+1700000090 ups.status OB DISCHRG
+1700000100 !down Connection refused
+1700000160 !tick
+1700000200 !up
+1700000200 ups.status OL CHRG
+1700000200 battery.charge 99
+replay-until 1700000300
+@1700000300 poll
+ups.status OL CHRG
+battery.charge 100
+
+=== replay-nodata-then-up
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000100 !nodata Driver not connected
+1700000200 !up
+1700000200 battery.charge 99
+replay-until 1700000300
+
+=== replay-down-nodata-up
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000100 !down Connection refused
+1700000150 !nodata Driver not connected
+1700000200 !up
+replay-until 1700000300
+
+=== replay-down-before-any-poll
+# A journal that starts down: Cannot reach, then Reconnected and the
+# first poll (already on battery).
+replay
+1700000000 !start
+1700000000 !down Connection refused
+1700000060 !tick
+1700000100 !up
+1700000100 ups.status OB DISCHRG
+1700000100 battery.charge 90
+1700000160 battery.charge 89
+replay-until 1700000200
+
+=== replay-snapshot-of-a-down-state
+# What journal::since() writes for a journal that ended down: the vars are
+# set, but no !up, so they are not applied until the next !up.
+replay
+1700000000 !start
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000000 !down Connection refused
+1700000300 !up
+replay-until 1700000400
+
+=== replay-restart-after-long-silence
+# The recorder stopped after 420 and came back at 1420.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 !tick
+1700000420 !tick
+1700001420 !start
+1700001420 !up
+1700001420 battery.charge 100
+1700001420 ups.status OL
+1700001480 !tick
+replay-until 1700001500
+
+=== replay-restart-after-short-silence
+# A !start always cuts at the last record, even after 100 s.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000100 !tick
+1700000200 !start
+1700000200 !up
+1700000260 !tick
+replay-until 1700000300
+
+=== replay-silence-of-exactly-gap-and-just-over
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000000 battery.charge 100
+1700000150 !tick
+1700000301 !tick
+1700000310 battery.charge 99
+replay-until 1700000320
+
+=== replay-silence-while-down-is-no-gap
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000060 !down Connection refused
+1700001000 !up
+replay-until 1700001010
+
+=== replay-gap-during-an-outage
+# The outage runs through the gap: 1940 s on battery.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 ups.status OB DISCHRG
+1700000120 !tick
+1700002000 !start
+1700002000 !up
+1700002000 ups.status OL CHRG
+replay-until 1700002100
+
+=== replay-long-silence-without-start
+# A silence over GAP with no !start after it (say the host was suspended):
+# the records after it are not applied until the next !up.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000000 battery.charge 100
+1700000100 !tick
+1700001000 ups.status OB DISCHRG
+1700001060 battery.charge 99
+1700001120 !tick
+1700001150 !down Connection refused
+1700001200 !up
+1700001200 battery.charge 98
+replay-until 1700001300
+
+=== replay-trailing-gap-before-until
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000100 !tick
+1700000200 !tick
+1700000300 !tick
+replay-until 1700001000
+@1700001000 poll
+battery.charge 100
+ups.status OL
+
+=== replay-trailing-silence-of-exactly-gap
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000100 !tick
+1700000200 !tick
+1700000300 !tick
+replay-until 1700000450
+
+=== replay-trailing-silence-just-over-gap
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OL
+1700000100 !tick
+1700000200 !tick
+1700000300 !tick
+replay-until 1700000451
+
+=== replay-records-at-and-after-until-are-left-out
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 battery.charge 99
+1700000100 ups.status OB DISCHRG
+1700000100 battery.charge 98
+1700000160 !down Connection refused
+replay-until 1700000100
+@1700000100 poll
+battery.charge 98
+ups.status OB DISCHRG
+
+=== replay-unset-and-alarms
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000000 ups.alarm Old alarm
+1700000060 ups.status OL ALARM
+1700000060 ups.alarm Overheat
+1700000120 -ups.alarm
+1700000120 ups.status OL
+1700000180 ups.alarm Overheat
+1700000240 -battery.charge
+1700000240 ups.test.result Done and passed
+replay-until 1700000300
+
+=== replay-ticks-are-polls
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 !tick
+1700000120 !tick
+1700000180 !tick
+replay-until 1700000200
+
+=== replay-poll-and-down-in-the-same-second
+# The poll at 60 is applied after the !down of the same second, so the
+# replay ends with the link Up.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 battery.charge 99
+1700000060 !down Connection refused
+replay-until 1700000100
+
+=== replay-first-poll-and-down-in-the-same-second
+replay
+1700000000 !start
+1700000000 !up
+1700000000 ups.status OB
+1700000000 !down Connection refused
+replay-until 1700000100
+
+=== replay-stale-at-end-then-live-polls
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000100 !nodata Driver not connected
+replay-until 1700000150
+@1700000150 poll
+battery.charge 100
+ups.status OL
+
+=== replay-then-live-polls
+# The live polls carry on from the replayed state.
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 battery.charge.low 20
+1700000000 ups.status OL
+1700000060 ups.status OB DISCHRG
+1700000120 battery.charge 99
+1700000180 battery.charge 98
+replay-until 1700000200
+@1700000200 estimate
+@1700000240 poll
+battery.charge 97
+battery.charge.low 20
+ups.status OB DISCHRG
+@1700000240 estimate
+@1700000300 poll
+battery.charge 97
+battery.charge.low 20
+ups.status OL CHRG
+
+=== replay-empty-journal
+replay
+replay-until 1700000000
+
+=== replay-after-a-live-stale
+# The app applies NoData (lost Stale) at once even while polls are held
+# for recorded history, so the replay can start on a Stale Ups whose
+# band timeline already has a later entry.
+@1700000500 stale Driver not connected
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000060 ups.status OB DISCHRG
+1700000120 !tick
+1700000180 !tick
+1700000240 !tick
+1700000300 !tick
+1700000360 !tick
+1700000420 !tick
+1700000480 !tick
+replay-until 1700000500
+@1700000510 poll
+battery.charge 99
+ups.status OB DISCHRG
+
+=== replay-after-a-live-down
+# Likewise for a lost upsd before the recorded history arrives.
+@1700000500 down Connection refused
+replay
+1700000000 !start
+1700000000 !up
+1700000000 battery.charge 100
+1700000000 ups.status OL
+1700000100 !tick
+1700000200 !tick
+1700000300 !tick
+1700000400 !tick
+replay-until 1700000500
+@1700000500 down Connection refused
+@1700000510 poll
+battery.charge 100
+ups.status OL

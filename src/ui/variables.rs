@@ -36,7 +36,7 @@ pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx, u: &Ups, state: &mut TableS
     let title = if filter.is_empty() {
         format!(" Variables {} ", names.len())
     } else {
-        format!(" Variables {}/{} matching \"{filter}\" ", names.len(), u.vars.len())
+        format!(" Variables {}/{} matching \"{filter}\" ", names.len(), u.vars().len())
     };
     let block = t.block(true).title(title);
     let inner = block.inner(list_area);
@@ -45,13 +45,13 @@ pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx, u: &Ups, state: &mut TableS
     let rows: Vec<Row> = names
         .iter()
         .map(|name| {
-            let var = &u.vars[name];
+            let var = &u.vars()[name];
             let (group, rest) = name.split_once('.').unwrap_or((name, ""));
             let mut spans = vec![Span::styled(group.to_string(), t.group(group))];
             if !rest.is_empty() {
                 spans.push(Span::raw(format!(".{rest}")));
             }
-            let fresh = var.changed.is_some_and(|c| c.elapsed() < FRESH);
+            let fresh = var.changed.is_some_and(|c| c.elapsed().unwrap_or_default() < FRESH);
             let value_style = if fresh { t.fresh() } else { Style::new() };
             let rw = if u.rw.contains(name) { Span::styled("rw", t.rw()) } else { Span::raw("") };
             Row::new(vec![
@@ -85,7 +85,7 @@ pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx, u: &Ups, state: &mut TableS
         f.render_stateful_widget(t.scrollbar(), list_area.inner(ratatui::layout::Margin::new(0, 1)), &mut sb);
     }
     if n == 0 {
-        let msg = if u.vars.is_empty() { "No variables yet" } else { "Nothing matches the filter" };
+        let msg = if u.vars().is_empty() { "No variables yet" } else { "Nothing matches the filter" };
         f.render_widget(Paragraph::new(Span::styled(msg, t.dim())).centered(), inner);
     }
 
@@ -103,7 +103,7 @@ fn detail(f: &mut Frame, area: Rect, cx: &Ctx, u: &Ups, name: &str) {
     f.render_widget(block, area);
     let w = inner.width as usize;
     let lw = 9;
-    let var = &u.vars[name];
+    let var = &u.vars()[name];
     let info = u.info.get(name);
     let mut lines = Vec::new();
 
@@ -142,12 +142,12 @@ fn detail(f: &mut Frame, area: Rect, cx: &Ctx, u: &Ups, name: &str) {
         None => {}
     }
     let changed = match (&var.changed, &var.prev) {
-        (Some(at), Some(prev)) => format!("{}, was {prev}", fmt::ago(at.elapsed())),
-        (Some(at), None) => format!("appeared {}", fmt::ago(at.elapsed())),
+        (Some(at), Some(prev)) => format!("{}, was {prev}", fmt::ago(at.elapsed().unwrap_or_default())),
+        (Some(at), None) => format!("appeared {}", fmt::ago(at.elapsed().unwrap_or_default())),
         _ => "not since upst started".to_string(),
     };
     lines.push(kv(&t, "Changed", lw, vec![Span::styled(changed, t.dim())]));
-    let series = u.history.get(name);
+    let series = u.series(name);
     if let Some(s) = series
         && let (Some(first), Some((lo, hi))) = (s.first(), s.min_max(f64::MIN, f64::MAX))
         && s.varied()

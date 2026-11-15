@@ -44,16 +44,14 @@ pub fn title(var: &str) -> &str {
 
 /// Known series first, then anything else that moved.
 pub fn metrics(u: &Ups) -> Vec<String> {
-    let mut out: Vec<String> = KNOWN
-        .iter()
-        .filter(|(v, _)| u.history.get(v).is_some_and(|s| s.len() > 0))
-        .map(|(v, _)| v.to_string())
-        .collect();
+    let mut out: Vec<String> =
+        KNOWN.iter().filter(|(v, _)| u.series(v).is_some_and(|s| !s.is_empty())).map(|(v, _)| v.to_string()).collect();
     let mut others: Vec<String> = u
-        .history
-        .names()
+        .history()
+        .into_iter()
+        .flat_map(|h| h.names())
         .filter(|n| !KNOWN.iter().any(|(k, _)| k == n))
-        .filter(|n| u.history.get(n).is_some_and(Series::varied))
+        .filter(|n| u.series(n).is_some_and(Series::varied))
         .map(str::to_string)
         .collect();
     others.sort();
@@ -202,7 +200,7 @@ fn thresholds(u: &Ups, var: &str) -> Vec<(f64, Severity, &'static str)> {
 
 #[allow(clippy::too_many_arguments)]
 fn chart(f: &mut Frame, area: Rect, t: &Theme, u: &Ups, var: &str, now: f64, window: f64, selected: bool) {
-    let Some(series) = u.history.get(var) else { return };
+    let Some(series) = u.series(var) else { return };
     let t0 = now - window;
     let current = u.get(var).map(|v| fmt::raw_with_unit(var, v)).unwrap_or_default();
     let mut block = t.block(selected).title(Line::from(vec![
@@ -279,7 +277,8 @@ fn draw_ribbon(f: &mut Frame, area: Rect, t: &Theme, u: &Ups, now: f64, window: 
     );
     let inner = block.inner(area);
     f.render_widget(block, area);
-    let cols = u.history.band_columns(now - window, now, inner.width as usize, now);
+    let n = inner.width as usize;
+    let cols = u.history().map_or_else(|| vec![Band::NoData; n], |h| h.band_columns(now - window, now, n, now));
     let spans: Vec<Span> = cols
         .into_iter()
         .map(|b| {

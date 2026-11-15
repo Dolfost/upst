@@ -4,23 +4,7 @@ use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Local};
 
-/// Compact duration: `5d 13h`, `2h 05m`, `12m 30s`, `45s`.
-pub fn duration(secs: f64) -> String {
-    if !secs.is_finite() || secs < 0.0 {
-        return "-".into();
-    }
-    let s = secs.round() as u64;
-    let (d, h, m, s) = (s / 86400, s / 3600 % 24, s / 60 % 60, s % 60);
-    if d > 0 {
-        format!("{d}d {h}h")
-    } else if h > 0 {
-        format!("{h}h {m:02}m")
-    } else if m > 0 {
-        format!("{m}m {s:02}s")
-    } else {
-        format!("{s}s")
-    }
-}
+pub use upst_core::fmt::{duration, parse_num, unit};
 
 /// Like `duration` but one unit finer for long spans: `5d 13h 18m`.
 pub fn duration_long(secs: f64) -> String {
@@ -61,33 +45,6 @@ pub fn span(secs: f64) -> String {
         format!("{m}m")
     } else {
         duration(secs)
-    }
-}
-
-/// Unit for a NUT variable, from its name.
-pub fn unit(var: &str) -> &'static str {
-    let last = var.rsplit('.').next().unwrap_or(var);
-    let has = |part: &str| var.split('.').any(|p| p == part);
-    if has("voltage") {
-        "V"
-    } else if has("current") {
-        "A"
-    } else if has("frequency") {
-        "Hz"
-    } else if has("temperature") {
-        "C"
-    } else if has("realpower") {
-        "W"
-    } else if has("power") {
-        "VA"
-    } else if has("humidity") || has("charge") || has("load") || has("efficiency") {
-        "%"
-    } else if has("runtime") || has("delay") || has("timer") || last == "uptime" {
-        "s"
-    } else if has("capacity") && var.starts_with("battery.") {
-        "Ah"
-    } else {
-        ""
     }
 }
 
@@ -134,12 +91,6 @@ pub fn raw_short(var: &str, raw: &str) -> String {
     }
 }
 
-/// Tolerant number parse: NUT values are strings and some drivers pad them.
-pub fn parse_num(s: &str) -> Option<f64> {
-    let v: f64 = s.trim().parse().ok()?;
-    v.is_finite().then_some(v)
-}
-
 /// `"2"`, `"2s"`, `"500ms"`, `"5m"`, `"6h"`, `"1d"`.
 pub fn parse_duration(s: &str) -> Result<Duration, String> {
     let s = s.trim();
@@ -167,11 +118,8 @@ mod tests {
 
     #[test]
     fn durations() {
-        assert_eq!(duration(479880.0), "5d 13h");
         assert_eq!(duration_long(479880.0), "5d 13h 18m");
-        assert_eq!(duration(3725.0), "1h 02m");
-        assert_eq!(duration(65.0), "1m 05s");
-        assert_eq!(duration(5.0), "5s");
+        assert_eq!(duration_long(3725.0), "1h 02m");
         assert_eq!(span(900.0), "15m");
         assert_eq!(span(21600.0), "6h");
         assert_eq!(span(4500.0), "1h 15m");
@@ -183,13 +131,6 @@ mod tests {
 
     #[test]
     fn units() {
-        assert_eq!(unit("input.voltage"), "V");
-        assert_eq!(unit("input.voltage.nominal"), "V");
-        assert_eq!(unit("ups.realpower.nominal"), "W");
-        assert_eq!(unit("ups.power"), "VA");
-        assert_eq!(unit("battery.charge.low"), "%");
-        assert_eq!(unit("battery.runtime"), "s");
-        assert_eq!(unit("device.model"), "");
         assert_eq!(with_unit("battery.voltage", 13.0), "13 V");
         assert_eq!(with_unit("battery.voltage", 3.25), "3.25 V");
         assert_eq!(with_unit("input.voltage", 231.44), "231.4 V");

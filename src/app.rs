@@ -8,16 +8,26 @@ use chrono::{DateTime, Local};
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 use ratatui::widgets::TableState;
+use upst_core::EventKind;
 
 use crate::archive::{self, Fetch};
 use crate::cli::{ChargeStyle, ViewArg};
 use crate::history::History;
 use crate::model::{Link, Ups, dangerous, from_unix, unix};
+use crate::poll::{self, Action, Creds, Poller};
 use crate::recorder::{Addr, Listed};
 use crate::status::Severity;
 use crate::target::{Server, Target};
 use crate::ui::Theme;
-use crate::worker::{Action, Creds, Request, Update};
+
+/// What the background threads report.
+#[derive(Debug)]
+pub enum Update {
+    /// From the poller of a server, by its index in `App::servers`.
+    Server(usize, poll::Update),
+    /// From the recorder, see `archive`.
+    Archive(archive::Event),
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum View {
@@ -80,7 +90,8 @@ pub enum ServerLink {
 
 pub struct ServerState {
     pub server: Server,
-    pub tx: Sender<Request>,
+    /// `None` in tests. It stops polling when dropped.
+    pub poller: Option<Poller>,
     pub link: ServerLink,
     pub version: Option<String>,
     pub creds: Option<Creds>,
@@ -295,11 +306,11 @@ impl App {
         }
     }
 
-    pub fn add_server(&mut self, server: Server, tx: Sender<Request>, names: Option<&[String]>) -> usize {
+    pub fn add_server(&mut self, server: Server, poller: Option<Poller>, names: Option<&[String]>) -> usize {
         let idx = self.servers.len();
         self.servers.push(ServerState {
             server: server.clone(),
-            tx,
+            poller,
             link: ServerLink::Connecting,
             version: None,
             creds: self.pending_creds.clone(),
@@ -324,7 +335,7 @@ impl App {
 
     /// Find or add a UPS, keeping server order and the selection.
     fn ensure_ups(&mut self, server: usize, name: &str, desc: &str) -> usize {
-        if let Some(i) = self.ups.iter().position(|u| u.server == server && u.name == name) {
+        if let Some(i) = self.find_ups(server, name) {
             if !desc.is_empty() {
                 self.ups[i].desc = desc.to_string();
             }
@@ -338,10 +349,10 @@ impl App {
             .map_or(self.capacity, |(_, c)| Some(*c));
         let ups = Ups::new(server, &srv.to_string(), name, desc, self.new_history(), capacity);
         let at = self.ups.iter().rposition(|u| u.server <= server).map_or(0, |i| i + 1);
-        let selected = self.ups.get(self.sel).map(|u| (u.server, u.name.clone()));
+        let selected = self.ups.get(self.sel).map(|u| (u.server, u.name().to_string()));
         self.ups.insert(at, ups);
         if let Some((s, n)) = selected {
-            self.sel = self.ups.iter().position(|u| u.server == s && u.name == n).unwrap_or(0);
+            self.sel = self.find_ups(s, &n).unwrap_or(0);
         }
         match self.recorder {
             RecorderState::Off => {}
@@ -352,7 +363,7 @@ impl App {
     }
 
     fn find_ups(&self, server: usize, name: &str) -> Option<usize> {
-        self.ups.iter().position(|u| u.server == server && u.name == name)
+        self.ups.iter().position(|u| u.server == server && u.name() == name)
     }
 
     /// Ask the recorder for a UPS's journal, holding its polls meanwhile.
@@ -361,11 +372,11 @@ impl App {
             return self.release(i);
         };
         let u = &self.ups[i];
-        let Some(label) = archive::matching(list, &u.name, &self.servers[u.server].server, addr) else {
+        let Some(label) = archive::matching(list, u.name(), &self.servers[u.server].server, addr) else {
             return self.release(i);
         };
         let since = unix(SystemTime::now()) - self.history_keep.as_secs_f64();
-        let fetch = Fetch { server: u.server, ups: u.name.clone(), label: label.to_string(), since };
+        let fetch = Fetch { server: u.server, ups: u.name().to_string(), label: label.to_string(), since };
         if tx.send(fetch).is_ok() {
             self.ups[i].held.get_or_insert_with(Vec::new);
         } else {
@@ -382,9 +393,10 @@ impl App {
 
     fn apply_vars(&mut self, i: usize, vars: Vec<(String, String)>, at: SystemTime) {
         let events = self.ups[i].apply(vars, at);
-        let label = self.ups[i].label.clone();
-        for (sev, text) in events {
-            self.log_event(&label, sev, text);
+        let label = self.ups[i].label().to_string();
+        // Live, the server's own "Reconnected to" already says so.
+        for ev in events.into_iter().filter(|e| !matches!(e.kind, EventKind::UpsdBack { .. })) {
+            self.log_event(&label, ev.severity, ev.to_string());
         }
     }
 
@@ -415,11 +427,12 @@ impl App {
                             .held
                             .as_ref()
                             .and_then(|h| h.first())
-                            .map_or_else(|| unix(SystemTime::now()), |(_, at)| unix(*at));
-                        let events = archive::replay(&mut self.ups[i], &records, until);
-                        let ups_label = self.ups[i].label.clone();
-                        for (t, sev, text) in events {
-                            self.log_event_at(DateTime::from(from_unix(t)), &ups_label, sev, text, false);
+                            .map_or_else(SystemTime::now, |(_, at)| *at);
+                        let events = self.ups[i].replay(&records, until);
+                        let ups_label = self.ups[i].label().to_string();
+                        for ev in events {
+                            let text = ev.to_string();
+                            self.log_event_at(DateTime::from(ev.at), &ups_label, ev.severity, text, false);
                         }
                         let first = from_unix(records[0].t);
                         let via = match &self.recorder {
@@ -432,7 +445,7 @@ impl App {
                     }
                     Ok(_) => {}
                     Err(e) => {
-                        let ups_label = self.ups[i].label.clone();
+                        let ups_label = self.ups[i].label().to_string();
                         self.log_event(&ups_label, Severity::Warn, format!("Recorded history of {label}: {e}"));
                     }
                 }
@@ -441,7 +454,7 @@ impl App {
                 // may already know better.
                 if let ServerLink::Down { error, .. } = &self.servers[server].link {
                     let link = Link::Down(error.clone());
-                    self.ups[i].lost(link);
+                    let _ = self.ups[i].lost(link, SystemTime::now());
                 }
             }
         }
@@ -478,12 +491,17 @@ impl App {
 
     pub fn update(&mut self, u: Update) {
         match u {
-            Update::Connecting { server } => {
-                if self.servers[server].link != ServerLink::Up {
-                    self.servers[server].link = ServerLink::Connecting;
-                }
+            Update::Server(server, u) => self.on_poll(server, u),
+            Update::Archive(ev) => self.on_archive(ev),
+        }
+    }
+
+    fn on_poll(&mut self, server: usize, u: poll::Update) {
+        match u {
+            poll::Update::Connecting if self.servers[server].link != ServerLink::Up => {
+                self.servers[server].link = ServerLink::Connecting;
             }
-            Update::Connected { server, version } => {
+            poll::Update::Connected { version } => {
                 let s = &mut self.servers[server];
                 s.link = ServerLink::Up;
                 let label = s.server.to_string();
@@ -501,18 +519,19 @@ impl App {
                     u.info_pending.clear();
                 }
             }
-            Update::Down { server, error, retry } => {
+            poll::Update::Down { error, retry } => {
                 let s = &mut self.servers[server];
                 s.link = ServerLink::Down { error: error.clone(), retry_at: Instant::now() + retry };
                 let label = s.server.to_string();
                 let first = !s.reported_down;
                 s.reported_down = true;
+                let now = SystemTime::now();
                 let mut any = false;
                 let mut evs = Vec::new();
                 for u in self.ups.iter_mut().filter(|u| u.server == server) {
                     any = true;
-                    if let Some((sev, text)) = u.lost(Link::Down(error.clone())) {
-                        evs.push((u.label.clone(), sev, text));
+                    if let Some(ev) = u.lost(Link::Down(error.clone()), now) {
+                        evs.push((u.label().to_string(), ev.severity, ev.to_string()));
                     }
                 }
                 if !any && first {
@@ -522,33 +541,31 @@ impl App {
                     self.log_event(&l, sev, text);
                 }
             }
-            Update::UpsList { server, list } => {
+            poll::Update::UpsList { list } => {
                 for (name, desc) in list {
                     self.ensure_ups(server, &name, &desc);
                 }
             }
-            Update::Vars { server, ups, vars } => {
+            poll::Update::Vars { ups, vars, at } => {
                 let i = self.ensure_ups(server, &ups, "");
-                let now = SystemTime::now();
                 match &mut self.ups[i].held {
-                    Some(held) => held.push((vars, now)),
-                    None => self.apply_vars(i, vars, now),
+                    Some(held) => held.push((vars, at)),
+                    None => self.apply_vars(i, vars, at),
                 }
             }
-            Update::Archive(ev) => self.on_archive(ev),
-            Update::NoData { server, ups, error } => {
+            poll::Update::NoData { ups, error } => {
                 let i = self.ensure_ups(server, &ups, "");
-                if let Some((sev, text)) = self.ups[i].lost(Link::Stale(error)) {
-                    let label = self.ups[i].label.clone();
-                    self.log_event(&label, sev, text);
+                if let Some(ev) = self.ups[i].lost(Link::Stale(error), SystemTime::now()) {
+                    let label = self.ups[i].label().to_string();
+                    self.log_event(&label, ev.severity, ev.to_string());
                 }
             }
-            Update::Meta { server, ups, cmds, rw } => {
+            poll::Update::Meta { ups, cmds, rw } => {
                 let i = self.ensure_ups(server, &ups, "");
                 self.ups[i].cmds = cmds;
                 self.ups[i].rw = rw.into_iter().collect();
             }
-            Update::Info { server, ups, var, info } => {
+            poll::Update::Info { ups, var, info } => {
                 let i = self.ensure_ups(server, &ups, "");
                 self.ups[i].info_pending.remove(&var);
                 // An open SET dialog was waiting for these choices.
@@ -561,9 +578,9 @@ impl App {
                 }
                 self.ups[i].info.insert(var, info);
             }
-            Update::Done { server, ups, action, result } => {
+            poll::Update::Done { ups, action, result } => {
                 let i = self.ensure_ups(server, &ups, "");
-                let label = self.ups[i].label.clone();
+                let label = self.ups[i].label().to_string();
                 let what = match &action {
                     Action::Command { .. } => format!("Command {}", action.describe()),
                     Action::Set { .. } => format!("Set {}", action.describe()),
@@ -573,17 +590,21 @@ impl App {
                         self.toast(Severity::Good, format!("{what}: {msg}"));
                         self.log_event(&label, Severity::Good, format!("{what}: {msg}"));
                     }
-                    Err((err, auth)) => {
-                        if auth {
+                    Err(e) => {
+                        if e.auth {
                             self.servers[server].creds = None;
                         }
+                        let err = e.message;
                         self.toast(Severity::Crit, format!("{what} failed: {err}"));
                         self.log_event(&label, Severity::Crit, format!("{what} failed: {err}"));
                     }
                 }
                 // Show the effect without waiting for the next poll.
-                let _ = self.servers[server].tx.send(Request::Refresh);
+                if let Some(p) = &self.servers[server].poller {
+                    p.refresh();
+                }
             }
+            _ => {}
         }
     }
 
@@ -601,7 +622,7 @@ impl App {
     pub fn visible_vars(&self) -> Vec<String> {
         let Some(u) = self.current() else { return Vec::new() };
         let f = self.vars.filter.text.to_lowercase();
-        u.vars
+        u.vars()
             .iter()
             .filter(|(k, v)| f.is_empty() || k.to_lowercase().contains(&f) || v.value.to_lowercase().contains(&f))
             .map(|(k, _)| k.clone())
@@ -620,7 +641,9 @@ impl App {
             return;
         }
         u.info_pending.insert(var.to_string());
-        let _ = self.servers[u.server].tx.send(Request::Describe { ups: u.name.clone(), var: var.to_string() });
+        if let Some(p) = &self.servers[u.server].poller {
+            p.describe(u.name(), var);
+        }
     }
 
     fn request_info(&mut self) {
@@ -629,9 +652,9 @@ impl App {
         }
     }
 
-    fn broadcast(&self, r: impl Fn() -> Request) {
-        for s in &self.servers {
-            let _ = s.tx.send(r());
+    fn broadcast(&self, r: impl Fn(&Poller)) {
+        for p in self.servers.iter().filter_map(|s| s.poller.as_ref()) {
+            r(p);
         }
     }
 
@@ -643,7 +666,7 @@ impl App {
         let j = if (INTERVALS[i] - cur).abs() > 1e-9 && step > 0 { i } else { j };
         self.interval = Duration::from_secs_f64(INTERVALS[j]);
         let d = self.interval;
-        self.broadcast(|| Request::Interval(d));
+        self.broadcast(|p| p.set_interval(d));
         self.toast(Severity::Info, format!("Polling every {}", crate::fmt::duration(INTERVALS[j]).replace(" 00s", "")));
     }
 
@@ -674,9 +697,11 @@ impl App {
         let server = self.ups[ups].server;
         match self.servers[server].creds.clone() {
             Some(creds) => {
-                let name = self.ups[ups].name.clone();
+                let name = self.ups[ups].name().to_string();
                 self.toast(Severity::Info, format!("Sending {} ...", action.describe()));
-                let _ = self.servers[server].tx.send(Request::Run { ups: name, action, creds });
+                if let Some(p) = &self.servers[server].poller {
+                    p.run(&name, action, creds);
+                }
                 self.dialog = None;
             }
             None => {
@@ -746,13 +771,13 @@ impl App {
             KeyCode::Char(']') => self.cycle_ups(1),
             KeyCode::Char('[') => self.cycle_ups(-1),
             KeyCode::Char('r') => {
-                self.broadcast(|| Request::Refresh);
+                self.broadcast(Poller::refresh);
                 self.toast(Severity::Info, "Refreshing");
             }
             KeyCode::Char('p') => {
                 self.paused = !self.paused;
                 let p = self.paused;
-                self.broadcast(|| Request::Pause(p));
+                self.broadcast(|poller| poller.pause(p));
                 self.toast(Severity::Info, if p { "Polling paused" } else { "Polling resumed" });
             }
             KeyCode::Char('<') => self.set_interval(-1),

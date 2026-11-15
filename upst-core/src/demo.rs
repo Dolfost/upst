@@ -1,63 +1,141 @@
-//! `--demo`: a simulated upsd on a loopback port, so upst can be tried
-//! (and tested) without a UPS. It speaks the same protocol as the real
-//! one and serves two UPSes on an accelerated clock:
+//! A simulated upsd on a loopback port, so code that talks to upsd can be
+//! tried and tested without a UPS (upst's `--demo`). It speaks the same
+//! protocol as the real one and serves two UPSes on an accelerated clock:
 //!
 //! - `rack`: a line-interactive UPS with every common variable, an outage
 //!   every few minutes that runs into low battery, writable settings and
 //!   instant commands with tracking.
 //! - `pack`: a portable power station like the EcoFlow that only reports
 //!   charge, runtime and battery voltage, with its own outage cycle.
+//!
+//! Logging in works with any user name and password except the password
+//! `wrong`, which gets `ACCESS-DENIED`.
+//!
+//! ```
+//! use std::time::Duration;
+//! use upst_core::{demo, nut};
+//!
+//! let server = demo::Server::spawn()?;
+//! let addr = server.addr();
+//! let mut c = nut::Client::connect(&addr.ip().to_string(), addr.port(), Duration::from_secs(2))?;
+//! let names: Vec<String> = c.list_ups()?.into_iter().map(|(name, _)| name).collect();
+//! assert_eq!(names, ["rack", "pack"]);
+//! server.stop();
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! This module needs the `demo` feature.
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, BufReader, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::nut::{quote, tokenize};
-use crate::target::Server;
+use crate::target;
 
-/// Polls of one simulated UPS: (name, [(unix time, variables)]).
+/// Polls of the simulated UPSes before the server started: per UPS, its
+/// name and a list of (Unix seconds, every variable and its value).
 pub type Past = Vec<(String, Vec<(f64, Vec<(String, String)>)>)>;
 
-/// Start the server; returns where it listens.
-pub fn start() -> io::Result<Server> {
-    serve_sim(Sim::new())
+/// A running simulated upsd. It stops when dropped, so keep it for as
+/// long as it is needed.
+#[derive(Debug)]
+#[must_use = "the server stops when this is dropped"]
+pub struct Server {
+    addr: SocketAddr,
+    stop: Arc<AtomicBool>,
+    thread: Option<JoinHandle<()>>,
 }
 
-/// Start the server with a simulation that has already run for `secs`,
-/// and return the polls of that time, `step` seconds apart, for a
-/// recorder to hold.
-pub fn start_with_history(secs: f64, step: f64) -> io::Result<(Server, Past)> {
-    let mut sim = Sim::new();
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64()).floor();
-    let n = (secs / step) as usize;
-    let mut past: Past = sim.units.iter().map(|u| (u.name.to_string(), Vec::with_capacity(n))).collect();
-    for k in 0..n {
-        sim.step(step);
-        let t = now - (n - k) as f64 * step;
-        for (i, u) in sim.units.iter().enumerate() {
-            past[i].1.push((t, u.vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect()));
+impl Server {
+    /// Start the server on a free loopback port.
+    pub fn spawn() -> io::Result<Server> {
+        Server::start(Sim::new())
+    }
+
+    /// Start the server with a simulation that has already run for
+    /// `secs`, and return the polls of that time, `step` seconds apart
+    /// and ending a step before now, for a recorder to hold. At most a
+    /// million steps.
+    pub fn spawn_with_history(secs: f64, step: f64) -> io::Result<(Server, Past)> {
+        if !(step > 0.0 && secs >= 0.0 && secs / step <= 1e6) {
+            let msg = format!("cannot simulate {secs} s in steps of {step} s");
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, msg));
+        }
+        let mut sim = Sim::new();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0.0, |d| d.as_secs_f64()).floor();
+        let n = (secs / step) as usize;
+        let mut past: Past = sim.units.iter().map(|u| (u.name.to_string(), Vec::with_capacity(n))).collect();
+        for k in 0..n {
+            sim.step(step);
+            let t = now - (n - k) as f64 * step;
+            for (i, u) in sim.units.iter().enumerate() {
+                past[i].1.push((t, u.vars.iter().map(|(k, v)| (k.clone(), v.clone())).collect()));
+            }
+        }
+        sim.last = Instant::now();
+        Ok((Server::start(sim)?, past))
+    }
+
+    fn start(sim: Sim) -> io::Result<Server> {
+        let listener = TcpListener::bind("127.0.0.1:0")?;
+        let addr = listener.local_addr()?;
+        let sim = Arc::new(Mutex::new(sim));
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = stop.clone();
+        let thread = thread::Builder::new().name("upst demo".into()).spawn(move || {
+            let mut conns = Vec::new();
+            for conn in listener.incoming() {
+                if flag.load(Ordering::SeqCst) {
+                    break;
+                }
+                let Ok(conn) = conn else { continue };
+                let (sim, flag) = (sim.clone(), flag.clone());
+                conns.retain(|c: &JoinHandle<()>| !c.is_finished());
+                conns.push(thread::spawn(move || {
+                    let _ = serve(conn, sim, &flag);
+                }));
+            }
+            for c in conns {
+                let _ = c.join();
+            }
+        })?;
+        Ok(Server { addr, stop, thread: Some(thread) })
+    }
+
+    /// Where it listens: `127.0.0.1` and a port of its own.
+    pub fn addr(&self) -> SocketAddr {
+        self.addr
+    }
+
+    /// Where it listens, as an upsd server.
+    pub fn target(&self) -> target::Server {
+        target::Server { host: self.addr.ip().to_string(), port: self.addr.port() }
+    }
+
+    /// Stop the server, close its connections, and wait for its threads.
+    pub fn stop(mut self) {
+        self.shutdown();
+    }
+
+    fn shutdown(&mut self) {
+        self.stop.store(true, Ordering::SeqCst);
+        if let Some(t) = self.thread.take() {
+            // Wake the accept loop.
+            let _ = TcpStream::connect_timeout(&self.addr, Duration::from_secs(1));
+            let _ = t.join();
         }
     }
-    sim.last = Instant::now();
-    Ok((serve_sim(sim)?, past))
 }
 
-fn serve_sim(sim: Sim) -> io::Result<Server> {
-    let listener = TcpListener::bind("127.0.0.1:0")?;
-    let port = listener.local_addr()?.port();
-    let sim = Arc::new(Mutex::new(sim));
-    thread::Builder::new().name("upst demo".into()).spawn(move || {
-        for conn in listener.incoming().flatten() {
-            let sim = sim.clone();
-            thread::spawn(move || {
-                let _ = serve(conn, sim);
-            });
-        }
-    })?;
-    Ok(Server { host: "127.0.0.1".into(), port })
+impl Drop for Server {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
 }
 
 /// xorshift; the demo needs wobble, not cryptography.
@@ -411,19 +489,43 @@ fn step_pack(u: &mut Unit, dt: f64, w: &mut impl FnMut() -> f64) {
     u.set("ups.status", status.join(" "));
 }
 
-fn serve(conn: TcpStream, sim: Arc<Mutex<Sim>>) -> io::Result<()> {
+fn serve(conn: TcpStream, sim: Arc<Mutex<Sim>>, stop: &AtomicBool) -> io::Result<()> {
+    // A short read timeout lets the connection notice the server stopping,
+    // and a write timeout keeps a client that never reads from holding it.
+    conn.set_read_timeout(Some(Duration::from_millis(200)))?;
+    conn.set_write_timeout(Some(Duration::from_secs(2)))?;
     let mut out = conn.try_clone()?;
-    let reader = BufReader::new(conn);
+    let mut reader = BufReader::new(conn);
     let (mut user, mut pass) = (None::<String>, None::<String>);
     let mut tracking = false;
-    for line in reader.lines() {
-        let line = line?;
+    let mut buf = Vec::new();
+    loop {
+        if stop.load(Ordering::SeqCst) {
+            return Ok(());
+        }
+        match reader.read_until(b'\n', &mut buf) {
+            Ok(0) => return Ok(()),
+            Ok(_) => {}
+            // Whatever came before the timeout stays in `buf`.
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut | io::ErrorKind::Interrupted
+                ) =>
+            {
+                continue;
+            }
+            Err(e) => return Err(e),
+        }
+        let line = String::from_utf8_lossy(&buf).trim_end_matches(['\n', '\r']).to_string();
+        buf.clear();
         let words = tokenize(&line);
         let w: Vec<&str> = words.iter().map(String::as_str).collect();
         let mut sim = sim.lock().unwrap();
         sim.tick();
         let reply = match w.as_slice() {
             ["LOGOUT"] => {
+                drop(sim);
                 out.write_all(b"OK Goodbye\n")?;
                 return Ok(());
             }
@@ -542,7 +644,6 @@ fn serve(conn: TcpStream, sim: Arc<Mutex<Sim>>) -> io::Result<()> {
         out.write_all(reply.as_bytes())?;
         out.write_all(b"\n")?;
     }
-    Ok(())
 }
 
 fn quote_always(v: &str) -> String {
@@ -676,14 +777,24 @@ fn set_var(sim: &mut Sim, name: &str, var: &str, value: &str) -> Result<(), &'st
     Ok(())
 }
 
-/// One simulated UPS for render tests: (name, description, commands,
-/// writable variables, one variable list per step).
-#[cfg(test)]
-pub type Recorded = (String, String, Vec<(String, String)>, Vec<String>, Vec<Vec<(String, String)>>);
+/// One simulated UPS and its variables over time, see [`simulate`].
+#[derive(Clone, Debug)]
+pub struct Simulated {
+    /// The UPS name, `rack` or `pack`.
+    pub name: String,
+    /// Its description.
+    pub desc: String,
+    /// Its instant commands and their descriptions.
+    pub cmds: Vec<(String, String)>,
+    /// Its writable variables.
+    pub rw: Vec<String>,
+    /// Every variable and its value, once per step.
+    pub frames: Vec<Vec<(String, String)>>,
+}
 
-/// Run the simulation for `steps` steps of `dt` seconds without a server.
-#[cfg(test)]
-pub fn record(steps: usize, dt: f64) -> Vec<Recorded> {
+/// Run the simulation for `steps` steps of `dt` simulated seconds,
+/// without a server or a clock: the polls a server would have answered.
+pub fn simulate(steps: usize, dt: f64) -> Vec<Simulated> {
     let mut sim = Sim::new();
     let mut frames: Vec<Vec<Vec<(String, String)>>> = vec![Vec::new(); sim.units.len()];
     for _ in 0..steps {
@@ -698,7 +809,7 @@ pub fn record(steps: usize, dt: f64) -> Vec<Recorded> {
         .map(|(u, f)| {
             let cmds = u.cmds.iter().map(|(c, d)| (c.to_string(), d.to_string())).collect();
             let rw = u.rw.iter().map(|s| s.to_string()).collect();
-            (u.name.to_string(), u.desc.to_string(), cmds, rw, f)
+            Simulated { name: u.name.to_string(), desc: u.desc.to_string(), cmds, rw, frames: f }
         })
         .collect()
 }
@@ -708,14 +819,15 @@ mod tests {
     use super::*;
     use crate::nut::{Client, Tracking};
 
-    fn client() -> Client {
-        let s = start().unwrap();
-        Client::connect(&s.host, s.port, Duration::from_secs(2)).unwrap()
+    fn client() -> (Server, Client) {
+        let s = Server::spawn().unwrap();
+        let c = Client::connect("127.0.0.1", s.addr().port(), Duration::from_secs(2)).unwrap();
+        (s, c)
     }
 
     #[test]
     fn lists_and_reads() {
-        let mut c = client();
+        let (_s, mut c) = client();
         let ups = c.list_ups().unwrap();
         assert_eq!(ups.iter().map(|u| u.0.as_str()).collect::<Vec<_>>(), ["rack", "pack"]);
         let vars = c.list_vars("rack").unwrap();
@@ -731,7 +843,7 @@ mod tests {
 
     #[test]
     fn commands_need_login_and_track() {
-        let mut c = client();
+        let (_s, mut c) = client();
         assert_eq!(c.instcmd("rack", "beeper.mute", None).unwrap_err().code(), Some("USERNAME-REQUIRED"));
         c.authenticate("admin", "secret").unwrap();
         assert!(c.enable_tracking());
@@ -748,7 +860,7 @@ mod tests {
 
     #[test]
     fn wrong_password_is_denied() {
-        let mut c = client();
+        let (_s, mut c) = client();
         c.authenticate("admin", "wrong").unwrap();
         let e = c.instcmd("rack", "beeper.mute", None).unwrap_err();
         assert!(e.is_auth());

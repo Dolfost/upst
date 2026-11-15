@@ -1,0 +1,366 @@
+=== replay-normal-journal
+@1700000500 replay-until 16 records
+  1700000060 Warn Power failure, running on battery
+  1700000360 Good Power restored after 5m 00s on battery
+@1700000500 estimate
+  estimate trend=Charging per_hour=25.714286 rough=true to_low=None to_empty=None to_full=280.000 watts=None
+--- end
+state link=Up outages=1 battery_secs=300.000 outage_start=None power_since=(1700000360, true) since=1700000000 polls=9 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000480.0
+var battery.charge "98"
+var battery.charge.low "20"
+var input.voltage "231"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("97") at=1700000480.0
+changed input.voltage prev=Some("0") at=1700000360.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000360.0
+bands 1700000000..1700000500 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000060:100 1700000120:99 1700000180:99 1700000240:98 1700000300:97 1700000420:97 1700000480:98
+series battery.charge.low 1700000000:20 1700000480:20
+series input.voltage 1700000000:230 1700000060:0 1700000300:0 1700000360:231 1700000480:231
+charge_at 1700000000=100 1700000125=99 1700000250=98 1700000375=97 1700000500=98
+now=1700000500 estimate trend=Charging per_hour=25.714286 rough=true to_low=None to_empty=None to_full=280.000 watts=None
+
+=== replay-down-then-up
+@1700000300 replay-until 11 records
+  1700000090 Warn Power failure, running on battery
+  1700000100 Crit Lost upsd: Connection refused
+  1700000200 Info Reconnected to localhost
+  1700000200 Good Power restored after 1m 50s on battery
+@1700000300 poll 2 vars
+--- end
+state link=Up outages=1 battery_secs=110.000 outage_start=None power_since=(1700000200, true) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000300.0
+var battery.charge "100"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("99") at=1700000300.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000200.0
+bands 1700000000..1700000300 Online,Online,Online,Online,Online,Online,Battery,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000090:100 1700000200:99 1700000300:100
+charge_at 1700000000=100 1700000075=100 1700000150=100 1700000225=99 1700000300=100
+now=1700000300 estimate trend=Charging per_hour=36.000000 rough=true to_low=None to_empty=None to_full=0.000 watts=None
+
+=== replay-nodata-then-up
+@1700000300 replay-until 7 records
+  1700000100 Warn No data: Driver not connected
+  1700000200 Good UPS data is fresh again (was: Driver not connected)
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000200.0
+var battery.charge "99"
+var ups.status "OL"
+changed battery.charge prev=Some("100") at=1700000200.0
+bands 1700000000..1700000300 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000200:99
+charge_at 1700000000=100 1700000075=100 1700000150=100 1700000225=99 1700000300=99
+now=1700000300 estimate None
+
+=== replay-down-nodata-up
+@1700000300 replay-until 6 records
+  1700000100 Crit Lost upsd: Connection refused
+  1700000200 Info Reconnected to localhost
+  1700000200 Good UPS data is fresh again (was: Driver not connected)
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000200.0
+var ups.status "OL"
+bands 1700000000..1700000300 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online,Online,Online
+now=1700000300 estimate None
+
+=== replay-down-before-any-poll
+@1700000200 replay-until 7 records
+  1700000000 Crit Cannot reach upsd: Connection refused
+  1700000100 Info Reconnected to localhost
+  1700000100 Warn Running on battery
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000100 power_since=(1700000100, false) since=1700000100 polls=2 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000160.0
+var battery.charge "89"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("90") at=1700000160.0
+bands 1700000000..1700000200 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000100:90 1700000160:89
+charge_at 1700000000=None 1700000050=None 1700000100=90 1700000150=90 1700000200=89
+now=1700000200 estimate trend=Discharging per_hour=-36.000000 rough=true to_low=None to_empty=8900.000 to_full=None watts=None
+
+=== replay-snapshot-of-a-down-state
+@1700000400 replay-until 5 records
+  1700000000 Crit Cannot reach upsd: Connection refused
+  1700000300 Info Reconnected to localhost
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000300, false) since=1700000300 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000300.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000400 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online
+series battery.charge 1700000300:100
+charge_at 1700000000=None 1700000100=None 1700000200=None 1700000300=100 1700000400=100
+now=1700000400 estimate None
+
+=== replay-restart-after-long-silence
+@1700001500 replay-until 11 records
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700001480.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700001500 Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online
+series battery.charge 1700000000:100 1700001480:100
+charge_at 1700000000=100 1700000375=100 1700000750=100 1700001125=100 1700001500=100
+now=1700001500 estimate None
+
+=== replay-restart-after-short-silence
+@1700000300 replay-until 8 records
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000260.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000300 Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000260:100
+charge_at 1700000000=100 1700000075=100 1700000150=100 1700000225=100 1700000300=100
+now=1700000300 estimate None
+
+=== replay-silence-of-exactly-gap-and-just-over
+@1700000320 replay-until 7 records
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000310.0
+var battery.charge "99"
+var ups.status "OL"
+changed battery.charge prev=Some("100") at=1700000310.0
+bands 1700000000..1700000320 Online,Online,Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online
+series battery.charge 1700000000:100 1700000301:100 1700000310:99
+charge_at 1700000000=100 1700000080=100 1700000160=100 1700000240=100 1700000320=99
+now=1700000320 estimate None
+
+=== replay-silence-while-down-is-no-gap
+@1700001010 replay-until 5 records
+  1700000060 Crit Lost upsd: Connection refused
+  1700001000 Info Reconnected to localhost
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700001000.0
+var ups.status "OL"
+bands 1700000000..1700001010 Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700001010 estimate None
+
+=== replay-gap-during-an-outage
+@1700002100 replay-until 9 records
+  1700000060 Warn Power failure, running on battery
+  1700002000 Good Power restored after 32m 20s on battery
+--- end
+state link=Up outages=1 battery_secs=1940.000 outage_start=None power_since=(1700002000, true) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700002000.0
+var battery.charge "100"
+var ups.status "OL CHRG"
+changed ups.status prev=Some("OB DISCHRG") at=1700002000.0
+bands 1700000000..1700002100 Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Online
+series battery.charge 1700000000:100 1700002000:100
+charge_at 1700000000=100 1700000525=100 1700001050=100 1700001575=100 1700002100=100
+now=1700002100 estimate None
+
+=== replay-long-silence-without-start
+@1700001300 replay-until 11 records
+  1700001000 Warn Power failure, running on battery
+  1700001150 Crit Lost upsd: Connection refused
+  1700001200 Info Reconnected to localhost
+--- end
+state link=Up outages=1 battery_secs=0.000 outage_start=1700001000 power_since=(1700001000, true) since=1700000000 polls=6 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700001200.0
+var battery.charge "98"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("99") at=1700001200.0
+changed ups.status prev=Some("OL") at=1700001000.0
+bands 1700000000..1700001300 Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700001000:100 1700001060:99 1700001120:99 1700001200:98
+charge_at 1700000000=100 1700000325=100 1700000650=100 1700000975=100 1700001300=98
+now=1700001300 estimate None
+
+=== replay-trailing-gap-before-until
+@1700001000 replay-until 7 records
+@1700001000 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700001000.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700001000 Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700001000:100
+charge_at 1700000000=100 1700000250=100 1700000500=100 1700000750=100 1700001000=100
+now=1700001000 estimate None
+
+=== replay-trailing-silence-of-exactly-gap
+@1700000450 replay-until 6 records
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000300.0
+var ups.status "OL"
+bands 1700000000..1700000450 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+now=1700000450 estimate None
+
+=== replay-trailing-silence-just-over-gap
+@1700000451 replay-until 6 records
+--- end
+state link=Down("not recorded") outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000300.0
+var ups.status "OL"
+bands 1700000000..1700000451 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000451 estimate None
+
+=== replay-records-at-and-after-until-are-left-out
+@1700000100 replay-until 8 records
+@1700000100 poll 2 vars
+  1700000100 Warn Power failure, running on battery
+--- end
+state link=Up outages=1 battery_secs=0.000 outage_start=1700000100 power_since=(1700000100, true) since=1700000000 polls=3 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000100.0
+var battery.charge "98"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("99") at=1700000100.0
+changed ups.status prev=Some("OL") at=1700000100.0
+bands 1700000000..1700000160 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000060:99 1700000100:98
+charge_at 1700000000=100 1700000040=100 1700000080=99 1700000120=98 1700000160=98
+now=1700000160 estimate None
+
+=== replay-unset-and-alarms
+@1700000300 replay-until 12 records
+  1700000060 Crit UPS alarm raised
+  1700000060 Crit Alarm: Overheat
+  1700000120 Good UPS alarm cleared
+  1700000180 Crit Alarm: Overheat
+  1700000240 Info Self-test: Done and passed
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000240.0
+var ups.alarm "Overheat"
+var ups.status "OL"
+var ups.test.result "Done and passed"
+changed ups.alarm prev=None at=1700000180.0
+changed ups.status prev=Some("OL ALARM") at=1700000120.0
+changed ups.test.result prev=None at=1700000240.0
+bands 1700000000..1700000300 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000180:100
+charge_at 1700000000=100 1700000075=100 1700000150=100 1700000225=100 1700000300=100
+now=1700000300 estimate None
+
+=== replay-ticks-are-polls
+@1700000200 replay-until 7 records
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000180.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000200 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000180:100
+charge_at 1700000000=100 1700000050=100 1700000100=100 1700000150=100 1700000200=100
+now=1700000200 estimate None
+
+=== replay-poll-and-down-in-the-same-second
+@1700000100 replay-until 6 records
+  1700000060 Crit Lost upsd: Connection refused
+--- end
+state link=Down("Connection refused") outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000060.0
+var battery.charge "99"
+var ups.status "OL"
+changed battery.charge prev=Some("100") at=1700000060.0
+bands 1700000000..1700000100 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000060:99
+charge_at 1700000000=100 1700000025=100 1700000050=100 1700000075=99 1700000100=99
+now=1700000100 estimate None
+
+=== replay-first-poll-and-down-in-the-same-second
+@1700000100 replay-until 4 records
+  1700000000 Warn Running on battery
+  1700000000 Crit Lost upsd: Connection refused
+--- end
+state link=Down("Connection refused") outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=1 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB"] severity=Warn trend=None updated=1700000000.0
+var ups.status "OB"
+bands 1700000000..1700000100 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000100 estimate None
+
+=== replay-stale-at-end-then-live-polls
+@1700000150 replay-until 5 records
+  1700000100 Warn No data: Driver not connected
+@1700000150 poll 2 vars
+  1700000150 Good UPS data is fresh again (was: Driver not connected)
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000150.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000150 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+series battery.charge 1700000000:100 1700000150:100
+charge_at 1700000000=100 1700000037.500=100 1700000075=100 1700000112.500=100 1700000150=100
+now=1700000150 estimate None
+
+=== replay-then-live-polls
+@1700000200 replay-until 8 records
+  1700000060 Warn Power failure, running on battery
+@1700000200 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=4680.000 to_empty=5880.000 to_full=None watts=None
+@1700000240 poll 3 vars
+@1700000240 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=4620.000 to_empty=5820.000 to_full=None watts=None
+@1700000300 poll 3 vars
+  1700000300 Good Power restored after 4m 00s on battery
+--- end
+state link=Up outages=1 battery_secs=240.000 outage_start=None power_since=(1700000300, true) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000300.0
+var battery.charge "97"
+var battery.charge.low "20"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("98") at=1700000240.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000300.0
+bands 1700000000..1700000300 Online,Online,Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000060:100 1700000120:99 1700000180:98 1700000240:97 1700000300:97
+series battery.charge.low 1700000000:20 1700000300:20
+charge_at 1700000000=100 1700000075=100 1700000150=99 1700000225=98 1700000300=97
+now=1700000300 estimate None
+
+=== replay-empty-journal
+@1700000000 replay-until 0 records
+--- end
+state link=Connecting outages=0 battery_secs=0.000 outage_start=None power_since=None since=None polls=0 headline="NO STATUS" power=Unknown capacity_wh=None capacity_guessed=false
+status tokens=[] severity=Info trend=None updated=None
+bands 1700000000..1700000000 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000000 estimate None
+
+=== replay-after-a-live-stale
+@1700000500 stale Driver not connected
+  1700000500 Warn No data: Driver not connected
+@1700000500 replay-until 12 records
+  1700000000 Good UPS data is fresh again (was: Driver not connected)
+  1700000060 Warn Power failure, running on battery
+@1700000510 poll 2 vars
+--- end
+state link=Up outages=1 battery_secs=0.000 outage_start=1700000060 power_since=(1700000060, true) since=1700000000 polls=10 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000510.0
+var battery.charge "99"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("100") at=1700000510.0
+changed ups.status prev=Some("OL") at=1700000060.0
+bands 1700000000..1700000510 Online,Online,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000480:100 1700000510:99
+charge_at 1700000000=100 1700000127.500=100 1700000255=100 1700000382.500=100 1700000510=99
+now=1700000510 estimate trend=Discharging per_hour=-8.000000 rough=true to_low=None to_empty=44550.000 to_full=None watts=None
+
+=== replay-after-a-live-down
+@1700000500 down Connection refused
+  1700000500 Crit Cannot reach upsd: Connection refused
+@1700000500 replay-until 8 records
+@1700000500 down Connection refused
+  1700000500 Crit Lost upsd: Connection refused
+@1700000510 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000510.0
+var battery.charge "100"
+var ups.status "OL"
+bands 1700000000..1700000510 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000510:100
+charge_at 1700000000=100 1700000127.500=100 1700000255=100 1700000382.500=100 1700000510=100
+now=1700000510 estimate None

@@ -1,0 +1,478 @@
+=== estimate-before-any-poll
+@1700000000 estimate
+  estimate None
+--- end
+state link=Connecting outages=0 battery_secs=0.000 outage_start=None power_since=None since=None polls=0 headline="NO STATUS" power=Unknown capacity_wh=None capacity_guessed=false
+status tokens=[] severity=Info trend=None updated=None
+bands 1700000000..1700000000 NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData,NoData
+now=1700000000 estimate None
+
+=== estimate-steady-discharge-with-low
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000000 estimate
+  estimate None
+@1700000030 poll 3 vars
+@1700000060 poll 3 vars
+@1700000060 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=true to_low=1740.000 to_empty=2940.000 to_full=None watts=None
+@1700000090 poll 3 vars
+@1700000090 estimate
+  estimate trend=Discharging per_hour=-40.000000 rough=true to_low=2610.000 to_empty=4410.000 to_full=None watts=None
+@1700000120 poll 3 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=1680.000 to_empty=2880.000 to_full=None watts=None
+@1700000150 poll 3 vars
+@1700000180 poll 3 vars
+@1700000210 poll 3 vars
+@1700000240 poll 3 vars
+@1700000240 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=1560.000 to_empty=2760.000 to_full=None watts=None
+@1700000270 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=1560.000 to_empty=2760.000 to_full=None watts=None
+@1700000330 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=1560.000 to_empty=2760.000 to_full=None watts=None
+@1700000331 estimate
+  estimate trend=Discharging per_hour=-39.852399 rough=false to_low=2348.667 to_empty=4155.333 to_full=None watts=None
+@1700000600 estimate
+  estimate trend=Discharging per_hour=-20.000000 rough=false to_low=4680.000 to_empty=8280.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=9 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000240.0
+var battery.charge "46"
+var battery.charge.low "20"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("47") at=1700000240.0
+bands 1700000000..1700000600 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:50 1700000030:50 1700000060:49 1700000090:49 1700000120:48 1700000150:48 1700000180:47 1700000210:47 1700000240:46
+series battery.charge.low 1700000000:20 1700000240:20
+charge_at 1700000000=50 1700000150=48 1700000300=46 1700000450=46 1700000600=46
+now=1700000600 estimate trend=Discharging per_hour=-20.000000 rough=false to_low=4680.000 to_empty=8280.000 to_full=None watts=None
+
+=== estimate-single-step-rough
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 3 vars
+@1700000060 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=true to_low=5340.000 to_empty=5940.000 to_full=None watts=None
+@1700000090 estimate
+  estimate trend=Discharging per_hour=-40.000000 rough=true to_low=8010.000 to_empty=8910.000 to_full=None watts=None
+@1700000600 estimate
+  estimate trend=Discharging per_hour=-6.000000 rough=true to_low=53400.000 to_empty=59400.000 to_full=None watts=None
+@1700000000 estimate
+  estimate trend=Discharging per_hour=-3600.000000 rough=true to_low=89.000 to_empty=99.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=2 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000060.0
+var battery.charge "99"
+var battery.charge.low "10"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("100") at=1700000060.0
+bands 1700000000..1700000600 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:100 1700000060:99
+series battery.charge.low 1700000000:10 1700000060:10
+charge_at 1700000000=100 1700000150=99 1700000300=99 1700000450=99 1700000600=99
+now=1700000600 estimate trend=Discharging per_hour=-6.000000 rough=true to_low=53400.000 to_empty=59400.000 to_full=None watts=None
+
+=== estimate-charging-to-full
+@1700000000 poll 2 vars
+@1700000000 estimate
+  estimate None
+@1700000120 poll 2 vars
+@1700000120 estimate
+  estimate trend=Charging per_hour=30.000000 rough=true to_low=None to_empty=None to_full=240.000 watts=None
+@1700000240 poll 2 vars
+@1700000240 estimate
+  estimate trend=Charging per_hour=30.000000 rough=false to_low=None to_empty=None to_full=120.000 watts=None
+@1700000360 poll 2 vars
+@1700000360 estimate
+  estimate trend=Charging per_hour=30.000000 rough=false to_low=None to_empty=None to_full=0.000 watts=None
+@1700000420 poll 2 vars
+@1700000420 estimate
+  estimate None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000420.0
+var battery.charge "100"
+var ups.status "OL"
+changed battery.charge prev=Some("99") at=1700000360.0
+changed ups.status prev=Some("OL CHRG") at=1700000420.0
+bands 1700000000..1700000420 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:97 1700000120:98 1700000240:99 1700000360:100 1700000420:100
+charge_at 1700000000=97 1700000105=97 1700000210=98 1700000315=99 1700000420=100
+now=1700000420 estimate None
+
+=== estimate-fallback-after-long-silence
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 3 vars
+@1700000120 poll 3 vars
+@1700000180 poll 3 vars
+@1700000240 poll 3 vars
+@1700000300 poll 3 vars
+@1700000360 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=3300.000 to_empty=4500.000 to_full=None watts=None
+@1700000390 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=3300.000 to_empty=4500.000 to_full=None watts=None
+@1700000391 estimate
+  estimate trend=Discharging per_hour=-43.504532 rough=false to_low=4551.250 to_empty=6206.250 to_full=None watts=None
+@1700000900 estimate
+  estimate trend=Discharging per_hour=-17.142857 rough=false to_low=11550.000 to_empty=15750.000 to_full=None watts=None
+@1700006300 estimate
+  estimate trend=Discharging per_hour=-2.307692 rough=false to_low=85800.000 to_empty=117000.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=6 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000300.0
+var battery.charge "75"
+var battery.charge.low "20"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("76") at=1700000300.0
+bands 1700000000..1700006300 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:80 1700000060:79 1700000120:78 1700000180:77 1700000240:76 1700000300:75
+series battery.charge.low 1700000000:20 1700000300:20
+charge_at 1700000000=80 1700001575=75 1700003150=75 1700004725=75 1700006300=75
+now=1700006300 estimate trend=Discharging per_hour=-2.307692 rough=false to_low=85800.000 to_empty=117000.000 to_full=None watts=None
+
+=== estimate-with-capacity
+capacity 1000
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 3 vars
+@1700000120 poll 3 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=1680.000 to_empty=3480.000 to_full=None watts=600.000
+@1700000180 poll 3 vars
+  1700000180 Good Power restored after 3m 00s on battery
+@1700000360 poll 3 vars
+@1700000540 poll 3 vars
+@1700000540 estimate
+  estimate trend=Charging per_hour=20.000000 rough=false to_low=None to_empty=None to_full=7200.000 watts=200.000
+--- end
+state link=Up outages=0 battery_secs=180.000 outage_start=None power_since=(1700000180, true) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=Some(1000.0) capacity_guessed=false
+status tokens=["OL", "CHRG"] severity=Good trend=Some(Charging) updated=1700000540.0
+var battery.charge "60"
+var battery.charge.low "30"
+var ups.status "OL CHRG"
+changed battery.charge prev=Some("59") at=1700000540.0
+changed ups.status prev=Some("OB DISCHRG") at=1700000180.0
+bands 1700000000..1700000540 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:60 1700000060:59 1700000120:58 1700000180:58 1700000360:59 1700000540:60
+series battery.charge.low 1700000000:30 1700000540:30
+charge_at 1700000000=60 1700000135=58 1700000270=58 1700000405=59 1700000540=60
+now=1700000540 estimate trend=Charging per_hour=20.000000 rough=false to_low=None to_empty=None to_full=7200.000 watts=200.000
+
+=== capacity-ecoflow-guess
+@1700000000 poll 4 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 4 vars
+@1700000120 poll 4 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=4680.000 to_full=None watts=1228.800
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=3 headline="ON BATTERY" power=Battery capacity_wh=Some(2048.0) capacity_guessed=true
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000120.0
+var battery.charge "78"
+var device.mfr "EcoFlow"
+var ups.power.nominal "4096"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("79") at=1700000120.0
+changed ups.power.nominal prev=Some("2048") at=1700000120.0
+bands 1700000000..1700000120 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:80 1700000060:79 1700000120:78
+series ups.power.nominal 1700000000:2048 1700000060:2048 1700000120:4096
+charge_at 1700000000=80 1700000030=80 1700000060=79 1700000090=79 1700000120=78
+now=1700000120 estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=4680.000 to_full=None watts=1228.800
+
+=== capacity-ecoflow-explicit-capacity-wins
+capacity 1000
+@1700000000 poll 4 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 4 vars
+@1700000120 poll 4 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=4680.000 to_full=None watts=600.000
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=3 headline="ON BATTERY" power=Battery capacity_wh=Some(1000.0) capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000120.0
+var battery.charge "78"
+var device.mfr "EcoFlow"
+var ups.power.nominal "2048"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("79") at=1700000120.0
+bands 1700000000..1700000120 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:80 1700000060:79 1700000120:78
+series ups.power.nominal 1700000000:2048 1700000120:2048
+charge_at 1700000000=80 1700000030=80 1700000060=79 1700000090=79 1700000120=78
+now=1700000120 estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=4680.000 to_full=None watts=600.000
+
+=== capacity-ecoflow-ups-mfr-and-bad-nominal
+@1700000000 poll 4 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000000.0
+var battery.charge "100"
+var ups.mfr "ECOFLOW"
+var ups.power.nominal "0"
+var ups.status "OL"
+bands 1700000000..1700000000 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100
+series ups.power.nominal 1700000000:0
+charge_at 1700000000=100 1700000000=100 1700000000=100 1700000000=100 1700000000=100
+now=1700000000 estimate None
+
+=== capacity-ecoflow-ups-mfr-guess
+@1700000000 poll 4 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=1 headline="ON LINE" power=Online capacity_wh=Some(1024.5) capacity_guessed=true
+status tokens=["OL"] severity=Good trend=None updated=1700000000.0
+var battery.charge "100"
+var ups.mfr "ecoflow"
+var ups.power.nominal "1024.5"
+var ups.status "OL"
+bands 1700000000..1700000000 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100
+series ups.power.nominal 1700000000:1024.5
+charge_at 1700000000=100 1700000000=100 1700000000=100 1700000000=100 1700000000=100
+now=1700000000 estimate None
+
+=== capacity-ecoflow-seen-after-first-poll
+@1700000000 poll 2 vars
+@1700000010 poll 4 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000010.0
+var battery.charge "100"
+var device.mfr "EcoFlow"
+var ups.power.nominal "2048"
+var ups.status "OL"
+changed device.mfr prev=None at=1700000010.0
+changed ups.power.nominal prev=None at=1700000010.0
+bands 1700000000..1700000010 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000010:100
+series ups.power.nominal 1700000010:2048
+charge_at 1700000000=100 1700000002.500=100 1700000005=100 1700000007.500=100 1700000010=100
+now=1700000010 estimate None
+
+=== capacity-not-ecoflow
+@1700000000 poll 4 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000000.0
+var battery.charge "100"
+var device.mfr "APC"
+var ups.power.nominal "1500"
+var ups.status "OL"
+bands 1700000000..1700000000 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100
+series ups.power.nominal 1700000000:1500
+charge_at 1700000000=100 1700000000=100 1700000000=100 1700000000=100 1700000000=100
+now=1700000000 estimate None
+
+=== estimate-discharge-low-threshold-variants
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 2 vars
+@1700000120 poll 2 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+@1700000121 poll 3 vars
+@1700000121 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+@1700000122 poll 3 vars
+@1700000122 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+@1700000123 poll 3 vars
+@1700000123 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+@1700000124 poll 3 vars
+@1700000124 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=30.000 to_empty=2880.000 to_full=None watts=None
+@1700000125 poll 3 vars
+@1700000125 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=8 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000125.0
+var battery.charge "48"
+var battery.charge.low "ten"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("49") at=1700000120.0
+changed battery.charge.low prev=Some("47.5") at=1700000125.0
+bands 1700000000..1700000125 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:50 1700000060:49 1700000120:48 1700000125:48
+series battery.charge.low 1700000121:0 1700000122:60 1700000123:48 1700000124:47.5
+charge_at 1700000000=50 1700000031.250=50 1700000062.500=49 1700000093.750=49 1700000125=48
+now=1700000125 estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+
+=== estimate-after-link-loss
+@1700000000 poll 3 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 3 vars
+@1700000120 poll 3 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=2880.000 to_empty=4080.000 to_full=None watts=None
+@1700000130 down Connection refused
+  1700000130 Crit Lost upsd: Connection refused
+@1700000130 estimate
+  estimate None
+@1700000190 poll 3 vars
+@1700000190 estimate
+  estimate None
+@1700000250 poll 3 vars
+@1700000250 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=true to_low=2760.000 to_empty=3960.000 to_full=None watts=None
+@1700000310 stale Driver not connected
+  1700000310 Warn No data: Driver not connected
+@1700000310 estimate
+  estimate None
+@1700000370 poll 3 vars
+  1700000370 Good UPS data is fresh again (was: Driver not connected)
+@1700000370 estimate
+  estimate None
+@1700000400 gap
+@1700000400 estimate
+  estimate None
+--- end
+state link=Down("not recorded") outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=6 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=None updated=1700000370.0
+var battery.charge "65"
+var battery.charge.low "20"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("66") at=1700000370.0
+bands 1700000000..1700000400 Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,NoData,Battery,Battery,Battery,Battery,Battery,Battery,NoData,NoData,NoData,Battery,Battery
+series battery.charge 1700000000:70 1700000060:69 1700000120:68 1700000190:67 1700000250:66 1700000370:65
+series battery.charge.low 1700000000:20 1700000370:20
+charge_at 1700000000=70 1700000100=69 1700000200=67 1700000300=66 1700000400=65
+now=1700000400 estimate None
+
+=== estimate-online-below-full-without-chrg
+@1700000000 poll 2 vars
+@1700000300 poll 2 vars
+@1700000300 estimate
+  estimate trend=Charging per_hour=12.000000 rough=true to_low=None to_empty=None to_full=5700.000 watts=None
+@1700000600 poll 2 vars
+@1700000600 estimate
+  estimate trend=Charging per_hour=12.000000 rough=false to_low=None to_empty=None to_full=5400.000 watts=None
+@1700000900 poll 2 vars
+@1700000900 estimate
+  estimate None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000900.0
+var battery.charge "100"
+var ups.status "OL"
+changed battery.charge prev=Some("82") at=1700000900.0
+bands 1700000000..1700000900 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:80 1700000300:81 1700000600:82 1700000900:100
+charge_at 1700000000=80 1700000225=80 1700000450=81 1700000675=82 1700000900=100
+now=1700000900 estimate None
+
+=== estimate-trend-switch-resets
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 2 vars
+@1700000120 poll 2 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=5280.000 to_full=None watts=None
+@1700000130 poll 2 vars
+  1700000130 Good Power restored after 2m 10s on battery
+@1700000130 estimate
+  estimate None
+@1700000250 poll 2 vars
+@1700000250 estimate
+  estimate trend=Charging per_hour=30.000000 rough=true to_low=None to_empty=None to_full=1320.000 watts=None
+@1700000260 poll 2 vars
+  1700000260 Warn Power failure, running on battery
+@1700000260 estimate
+  estimate None
+--- end
+state link=Up outages=1 battery_secs=130.000 outage_start=1700000260 power_since=(1700000260, true) since=1700000000 polls=6 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000260.0
+var battery.charge "89"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("88") at=1700000250.0
+changed ups.status prev=Some("OL CHRG") at=1700000260.0
+bands 1700000000..1700000260 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:90 1700000060:89 1700000120:88 1700000130:88 1700000250:89 1700000260:89
+charge_at 1700000000=90 1700000065=89 1700000130=88 1700000195=88 1700000260=89
+now=1700000260 estimate None
+
+=== estimate-wrong-direction
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 2 vars
+@1700000060 estimate
+  estimate None
+@1700000120 poll 2 vars
+@1700000120 estimate
+  estimate None
+@1700000180 poll 2 vars
+  1700000180 Good Power restored after 3m 00s on battery
+@1700000240 poll 2 vars
+@1700000240 estimate
+  estimate None
+@1700000300 poll 2 vars
+@1700000300 estimate
+  estimate trend=Discharging per_hour=-15.000000 rough=false to_low=None to_empty=12000.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=180.000 outage_start=None power_since=(1700000180, true) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL", "CHRG", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000300.0
+var battery.charge "50"
+var ups.status "OL CHRG DISCHRG"
+changed battery.charge prev=Some("51") at=1700000300.0
+changed ups.status prev=Some("OL DISCHRG") at=1700000300.0
+bands 1700000000..1700000300 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:50 1700000060:51 1700000120:52 1700000180:52 1700000240:51 1700000300:50
+charge_at 1700000000=50 1700000075=51 1700000150=52 1700000225=52 1700000300=50
+now=1700000300 estimate trend=Discharging per_hour=-15.000000 rough=false to_low=None to_empty=12000.000 to_full=None watts=None
+
+=== estimate-sub-second-steps
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000010 poll 2 vars
+@1700000010.500 poll 2 vars
+@1700000011 estimate
+  estimate None
+@1700000070 poll 2 vars
+@1700000070 estimate
+  estimate trend=Discharging per_hour=-120.000000 rough=false to_low=None to_empty=1410.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=4 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000070.0
+var battery.charge "47"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("48") at=1700000070.0
+bands 1700000000..1700000070 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:50 1700000010:49 1700000010.500:48 1700000070:47
+charge_at 1700000000=50 1700000017.500=48 1700000035=48 1700000052.500=48 1700000070=47
+now=1700000070 estimate trend=Discharging per_hour=-120.000000 rough=false to_low=None to_empty=1410.000 to_full=None watts=None
+
+=== estimate-charge-missing-or-not-a-number
+@1700000000 poll 2 vars
+  1700000000 Warn Running on battery
+@1700000060 poll 2 vars
+@1700000120 poll 2 vars
+@1700000120 estimate
+  estimate trend=Discharging per_hour=-60.000000 rough=false to_low=None to_empty=2880.000 to_full=None watts=None
+@1700000180 poll 1 vars
+@1700000180 estimate
+  estimate None
+@1700000240 poll 2 vars
+@1700000240 estimate
+  estimate None
+@1700000300 poll 2 vars
+@1700000300 estimate
+  estimate trend=Discharging per_hour=-45.000000 rough=false to_low=None to_empty=3680.000 to_full=None watts=None
+@1700000360 poll 2 vars
+@1700000360 estimate
+  estimate trend=Discharging per_hour=-42.000000 rough=false to_low=None to_empty=3900.000 to_full=None watts=None
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=1700000000 power_since=(1700000000, false) since=1700000000 polls=7 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG"] severity=Warn trend=Some(Discharging) updated=1700000360.0
+var battery.charge "45.5"
+var ups.status "OB DISCHRG"
+changed battery.charge prev=Some("46") at=1700000360.0
+bands 1700000000..1700000360 Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery,Battery
+series battery.charge 1700000000:50 1700000060:49 1700000120:48 1700000300:46 1700000360:45.5
+charge_at 1700000000=50 1700000090=49 1700000180=48 1700000270=48 1700000360=45.5
+now=1700000360 estimate trend=Discharging per_hour=-42.000000 rough=false to_low=None to_empty=3900.000 to_full=None watts=None

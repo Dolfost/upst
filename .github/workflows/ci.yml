@@ -16,9 +16,36 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --check
-      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo test --workspace --all-features
+
+  # upst-core on its own, as a service like elamond builds it: the
+  # oldest supported Rust, every feature set, and none of the UI's
+  # dependencies.
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88"
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p upst-core --locked
+      - run: cargo build -p upst-core --locked --all-features
+      - name: No UI dependencies
+        run: |
+          cargo tree -p upst-core --all-features -e normal --prefix none
+          if cargo tree -p upst-core --all-features -e normal --prefix none | grep -E '^(ratatui|crossterm|clap|anyhow|toml|chrono) '; then
+            echo "::error::upst-core pulls in a UI dependency"
+            exit 1
+          fi
+      - run: cargo test -p upst-core --locked
+      - run: cargo test -p upst-core --locked --all-features
+      - run: cargo test -p upst-core --locked --all-features --doc
+      - run: cargo doc -p upst-core --locked --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   nix:
     runs-on: ubuntu-latest

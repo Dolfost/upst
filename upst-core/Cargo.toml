@@ -1,0 +1,26 @@
+[package]
+name = "upst-core"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "The core of upst: a blocking NUT client, a UPS model with typed events and estimates, and the upst recorder's journal"
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["ups", "nut", "upsd", "monitoring", "power"]
+categories = ["network-programming", "hardware-support"]
+
+[features]
+## Serialize and Deserialize for events, estimates, status and the like.
+serde = ["dep:serde"]
+## A simulated upsd with two UPSes, for trying things out and for tests.
+demo = []
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"], optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[package.metadata.docs.rs]
+all-features = true

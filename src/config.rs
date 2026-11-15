@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::time::Duration;
 
 use anyhow::Context;
@@ -24,7 +25,7 @@ pub const SYSTEM: &str = "/etc/upst/config.toml";
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Config {
-    targets: Option<Vec<Target>>,
+    targets: Option<Vec<Parsed<Target>>>,
     interval: Option<Time>,
     history: Option<Time>,
     timeout: Option<Time>,
@@ -33,7 +34,7 @@ pub struct Config {
     capacity: Option<f64>,
     view: Option<ViewArg>,
     charge_style: Option<ChargeStyle>,
-    recorder: Option<Addr>,
+    recorder: Option<Parsed<Addr>>,
     no_recorder: Option<bool>,
     ascii: Option<bool>,
     no_color: Option<bool>,
@@ -48,11 +49,11 @@ pub struct Config {
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, deny_unknown_fields, rename_all = "kebab-case")]
 struct Record {
-    targets: Option<Vec<Target>>,
+    targets: Option<Vec<Parsed<Target>>>,
     interval: Option<Time>,
     keep: Option<Time>,
     dir: Option<PathBuf>,
-    listen: Option<Vec<Addr>>,
+    listen: Option<Vec<Parsed<Addr>>>,
     timeout: Option<Time>,
 }
 
@@ -97,17 +98,19 @@ impl<'de> Deserialize<'de> for Time {
     }
 }
 
-/// Strings parsed the way the command line parses them.
-macro_rules! from_str {
-    ($($t:ty),*) => {$(
-        impl<'de> Deserialize<'de> for $t {
-            fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                String::deserialize(d)?.parse().map_err(de::Error::custom)
-            }
-        }
-    )*};
+/// A string parsed the way the command line parses it.
+#[derive(Clone, Debug)]
+struct Parsed<T>(T);
+
+impl<'de, T: FromStr<Err: fmt::Display>> Deserialize<'de> for Parsed<T> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        String::deserialize(d)?.parse().map(Parsed).map_err(de::Error::custom)
+    }
 }
-from_str!(Target, Addr);
+
+fn parsed<T>(v: Vec<Parsed<T>>) -> Vec<T> {
+    v.into_iter().map(|p| p.0).collect()
+}
 
 /// Where upst looks without --config: the system file, then the user's,
 /// which wins key by key.
@@ -193,8 +196,8 @@ impl Config {
             let r = self.record;
             let r = Record { targets: r.targets.or(self.targets), timeout: r.timeout.or(self.timeout), ..r };
             fill!(args, m, r;
-                targets => std::convert::identity, interval => time, keep => time,
-                dir => Some, listen => std::convert::identity, timeout => time);
+                targets => parsed, interval => time, keep => time,
+                dir => Some, listen => parsed, timeout => time);
             return;
         }
         // A capacity on the command line is for every UPS.
@@ -202,9 +205,10 @@ impl Config {
             cli.capacities = self.ups.iter().filter_map(|(k, u)| Some((k.parse().ok()?, u.capacity?))).collect();
         }
         fill!(cli, m, self;
-            targets => std::convert::identity, interval => time, history => time, timeout => time,
+            targets => parsed, interval => time, history => time, timeout => time,
             user => Some, password_file => Some, capacity => Some, view => std::convert::identity,
-            charge_style => std::convert::identity, recorder => Some, no_recorder => std::convert::identity,
+            charge_style => std::convert::identity, recorder => |a: Parsed<Addr>| Some(a.0),
+            no_recorder => std::convert::identity,
             ascii => std::convert::identity, no_color => std::convert::identity,
             no_mouse => std::convert::identity, bell => std::convert::identity, format => Some);
     }

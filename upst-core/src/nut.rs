@@ -1,29 +1,40 @@
 //! A small blocking client for the NUT network protocol spoken by upsd
-//! (TCP 3493). Only what upst needs: listing, descriptions, login,
-//! instant commands and SET VAR, with optional result tracking.
+//! (TCP 3493): listing, descriptions, login, instant commands and SET VAR,
+//! with optional result tracking. It uses `std::net` only; run it on a
+//! thread of its own next to an async runtime.
 //!
-//! Reference: https://networkupstools.org/docs/developer-guide.chunked/net-protocol.html
+//! Reference: <https://networkupstools.org/docs/developer-guide.chunked/net-protocol.html>
 
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
+/// The port upsd listens on unless told otherwise.
 pub const DEFAULT_PORT: u16 = 3493;
 
+/// What went wrong talking to upsd.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum Error {
+    /// The connection failed, broke or timed out.
     Io(io::Error),
     /// `ERR <code> [detail]` from upsd.
     Server {
+        /// The error code, e.g. `ACCESS-DENIED` or `DATA-STALE`.
         code: String,
+        /// Anything upsd said after the code.
         detail: Option<String>,
     },
     /// upsd said something we did not expect.
     Protocol(String),
+    /// An argument the protocol cannot carry, such as one with a line
+    /// break; nothing was sent.
+    Argument(String),
 }
 
 impl Error {
+    /// The upsd error code, for [`Error::Server`].
     pub fn code(&self) -> Option<&str> {
         match self {
             Error::Server { code, .. } => Some(code),
@@ -51,7 +62,8 @@ impl From<io::Error> for Error {
     }
 }
 
-/// Human wording for upsd error codes.
+/// Human wording for an upsd error code, or an empty string for a code
+/// this crate does not know.
 pub fn describe_code(code: &str) -> &'static str {
     match code {
         "ACCESS-DENIED" => "access denied (check the user's permissions in upsd.users)",
@@ -99,12 +111,21 @@ impl fmt::Display for Error {
                 }
             }
             Error::Protocol(msg) => write!(f, "protocol error: {msg}"),
+            Error::Argument(msg) => write!(f, "invalid argument: {msg}"),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Io(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
+/// A result with an upsd [`Error`].
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Split a protocol line into words; double-quoted words may contain
@@ -177,24 +198,94 @@ fn parse_err(line: &str) -> Option<Error> {
 /// Result of polling a tracked instant command or SET VAR.
 #[derive(Debug)]
 pub enum Tracking {
+    /// The driver has not answered yet.
     Pending,
+    /// It worked.
     Success,
+    /// upsd or the driver refused.
     Failed(Error),
 }
 
+/// What upsd says about a variable, see [`Client::var_info`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VarInfo {
+    /// The description, when upsd has one.
+    pub desc: Option<String>,
+    /// Words from `GET TYPE`, e.g. `RW`, `ENUM`, `STRING:32`, `NUMBER`.
+    pub kind: Vec<String>,
+    /// The values an `ENUM` variable can take.
+    pub enum_values: Vec<String>,
+    /// The (low, high) ranges a `RANGE` variable can take.
+    pub ranges: Vec<(String, String)>,
+}
+
+impl VarInfo {
+    /// The longest value a `STRING:n` variable takes.
+    pub fn max_len(&self) -> Option<usize> {
+        self.kind.iter().find_map(|k| k.strip_prefix("STRING:")?.parse().ok())
+    }
+}
+
+/// An instant command and its description.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CmdInfo {
+    /// The command, e.g. `test.battery.start.quick`.
+    pub name: String,
+    /// The description, when upsd has one.
+    pub desc: Option<String>,
+}
+
+/// Commands that can cut power to the load or deep-cycle the battery;
+/// upst asks for the command to be typed out before it runs one.
+///
+/// ```
+/// use upst_core::nut::dangerous;
+///
+/// assert!(dangerous("load.off") && dangerous("shutdown.return"));
+/// assert!(!dangerous("beeper.mute"));
+/// ```
+pub fn dangerous(cmd: &str) -> bool {
+    cmd.starts_with("shutdown.")
+        || cmd.contains("load.off")
+        || cmd.contains("killpower")
+        || cmd.contains("reboot")
+        || cmd.starts_with("calibrate.start")
+        || cmd.starts_with("test.battery.start.deep")
+        || cmd.starts_with("bypass.start")
+}
+
+/// A connection to upsd. Every call blocks until upsd answers or the
+/// timeout given to [`Client::connect`] runs out; after an error for
+/// which [`Error::is_fatal`] is true, connect again.
+///
+/// The client keeps no credentials: [`Client::authenticate`] sends them
+/// and forgets them.
 pub struct Client {
     reader: BufReader<TcpStream>,
     stream: TcpStream,
 }
 
+impl fmt::Debug for Client {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client").field("peer", &self.stream.peer_addr().ok()).finish_non_exhaustive()
+    }
+}
+
 impl Client {
+    /// Connect to upsd. `timeout` applies to connecting and to every
+    /// read and write after that; zero means none.
     pub fn connect(host: &str, port: u16, timeout: Duration) -> Result<Client> {
+        let timeout = (!timeout.is_zero()).then_some(timeout);
         let mut last = None;
         for addr in (host, port).to_socket_addrs()? {
-            match TcpStream::connect_timeout(&addr, timeout) {
+            let conn = match timeout {
+                Some(t) => TcpStream::connect_timeout(&addr, t),
+                None => TcpStream::connect(addr),
+            };
+            match conn {
                 Ok(stream) => {
-                    stream.set_read_timeout(Some(timeout))?;
-                    stream.set_write_timeout(Some(timeout))?;
+                    stream.set_read_timeout(timeout)?;
+                    stream.set_write_timeout(timeout)?;
                     let _ = stream.set_nodelay(true);
                     let reader = BufReader::new(stream.try_clone()?);
                     return Ok(Client { reader, stream });
@@ -209,6 +300,10 @@ impl Client {
     }
 
     fn send(&mut self, line: &str) -> Result<()> {
+        // A line break would end the request early and start another one.
+        if line.contains(['\n', '\r']) {
+            return Err(Error::Argument("line break in an argument".into()));
+        }
         let mut buf = Vec::with_capacity(line.len() + 1);
         buf.extend_from_slice(line.as_bytes());
         buf.push(b'\n');
@@ -256,7 +351,7 @@ impl Client {
         }
     }
 
-    /// Every UPS on the server with its description.
+    /// Every UPS on the server with its description (`LIST UPS`).
     pub fn list_ups(&mut self) -> Result<Vec<(String, String)>> {
         Ok(self
             .list("UPS")?
@@ -281,14 +376,17 @@ impl Client {
             .collect())
     }
 
+    /// Every variable of a UPS and its value (`LIST VAR`).
     pub fn list_vars(&mut self, ups: &str) -> Result<Vec<(String, String)>> {
         self.pairs("VAR", ups)
     }
 
+    /// The writable variables of a UPS and their values (`LIST RW`).
     pub fn list_rw(&mut self, ups: &str) -> Result<Vec<(String, String)>> {
         self.pairs("RW", ups)
     }
 
+    /// The instant commands a UPS supports (`LIST CMD`).
     pub fn list_commands(&mut self, ups: &str) -> Result<Vec<String>> {
         Ok(self
             .list(&format!("CMD {}", quote(ups)))?
@@ -298,6 +396,7 @@ impl Client {
             .collect())
     }
 
+    /// The values an `ENUM` variable can take (`LIST ENUM`).
     pub fn list_enum(&mut self, ups: &str, var: &str) -> Result<Vec<String>> {
         Ok(self
             .list(&format!("ENUM {} {}", quote(ups), quote(var)))?
@@ -307,6 +406,7 @@ impl Client {
             .collect())
     }
 
+    /// The (low, high) ranges a `RANGE` variable can take (`LIST RANGE`).
     pub fn list_range(&mut self, ups: &str, var: &str) -> Result<Vec<(String, String)>> {
         Ok(self
             .list(&format!("RANGE {} {}", quote(ups), quote(var)))?
@@ -323,10 +423,14 @@ impl Client {
         Ok(Some(text).filter(|t| !t.is_empty() && t != "Description unavailable"))
     }
 
+    /// A variable's description (`GET DESC`), or `None` when upsd has
+    /// none.
     pub fn var_description(&mut self, ups: &str, var: &str) -> Result<Option<String>> {
         self.get_text(&format!("DESC {} {}", quote(ups), quote(var)), 3)
     }
 
+    /// An instant command's description (`GET CMDDESC`), or `None` when
+    /// upsd has none.
     pub fn command_description(&mut self, ups: &str, cmd: &str) -> Result<Option<String>> {
         self.get_text(&format!("CMDDESC {} {}", quote(ups), quote(cmd)), 3)
     }
@@ -337,11 +441,34 @@ impl Client {
         Ok(tokenize(&line).into_iter().skip(3).collect())
     }
 
+    /// Everything upsd says about a variable: its description, type, and
+    /// the values it can take. A failing `GET DESC` or a broken connection
+    /// is an error; anything else upsd refuses is left out.
+    pub fn var_info(&mut self, ups: &str, var: &str) -> Result<VarInfo> {
+        fn soft<T: Default>(r: Result<T>) -> Result<T> {
+            match r {
+                Err(e) if e.is_fatal() => Err(e),
+                r => Ok(r.unwrap_or_default()),
+            }
+        }
+        let mut info = VarInfo { desc: self.var_description(ups, var)?, ..VarInfo::default() };
+        info.kind = soft(self.var_type(ups, var))?;
+        if info.kind.iter().any(|k| k == "ENUM") {
+            info.enum_values = soft(self.list_enum(ups, var))?;
+        }
+        if info.kind.iter().any(|k| k == "RANGE") {
+            info.ranges = soft(self.list_range(ups, var))?;
+        }
+        Ok(info)
+    }
+
     /// The server banner, e.g. `Network UPS Tools upsd 2.8.4 - https://...`.
     pub fn server_version(&mut self) -> Result<String> {
         self.request("VER")
     }
 
+    /// Log in (`USERNAME` and `PASSWORD`), as needed for commands and
+    /// SET VAR.
     pub fn authenticate(&mut self, user: &str, password: &str) -> Result<()> {
         self.request(&format!("USERNAME {}", quote(user)))?;
         self.request(&format!("PASSWORD {}", quote(password)))?;
@@ -353,7 +480,8 @@ impl Client {
         self.request("SET TRACKING ON").is_ok()
     }
 
-    /// Returns the tracking id when tracking is on.
+    /// Run an instant command, with an optional value. Returns the
+    /// tracking id when tracking is on, see [`Client::tracking`].
     pub fn instcmd(&mut self, ups: &str, cmd: &str, value: Option<&str>) -> Result<Option<String>> {
         let mut line = format!("INSTCMD {} {}", quote(ups), quote(cmd));
         if let Some(v) = value {
@@ -364,6 +492,8 @@ impl Client {
         Ok(tracking_id(&reply))
     }
 
+    /// Set a writable variable. Returns the tracking id when tracking is
+    /// on, see [`Client::tracking`].
     pub fn set_var(&mut self, ups: &str, var: &str, value: &str) -> Result<Option<String>> {
         // upsd wants the value quoted even when it is a plain word.
         let mut quoted = quote(value);
@@ -374,6 +504,7 @@ impl Client {
         Ok(tracking_id(&reply))
     }
 
+    /// How a tracked command or SET VAR went (`GET TRACKING`).
     pub fn tracking(&mut self, id: &str) -> Result<Tracking> {
         match self.request(&format!("GET TRACKING {}", quote(id))) {
             Ok(line) if line.trim() == "PENDING" => Ok(Tracking::Pending),
@@ -384,6 +515,7 @@ impl Client {
         }
     }
 
+    /// Say goodbye and close the connection.
     pub fn logout(mut self) {
         let _ = self.request("LOGOUT");
     }

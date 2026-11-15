@@ -18,7 +18,7 @@ pub fn draw(f: &mut Frame, area: Rect, cx: &mut Ctx) {
         .log
         .iter()
         .rev()
-        .filter(|e| app.events.all || current.is_some_and(|u| e.ups == u.label || e.ups == u.server_label))
+        .filter(|e| app.events.all || current.is_some_and(|u| e.ups == u.label() || e.ups == u.server_label()))
         .collect();
     let scope = if app.events.all { "all" } else { "this UPS" };
     let block = t.block(true).title(format!(" Events {} ({scope}) ", entries.len()));

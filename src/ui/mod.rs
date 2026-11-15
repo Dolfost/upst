@@ -40,8 +40,8 @@ impl Ctx<'_> {
 
 /// Overall severity of a UPS, connection problems included.
 pub fn ups_severity(u: &Ups) -> Severity {
-    match u.link {
-        Link::Up => u.status.severity(),
+    match u.link() {
+        Link::Up => u.status().severity(),
         Link::Connecting => Severity::Info,
         Link::Stale(_) => Severity::Warn,
         Link::Down(_) => Severity::Crit,
@@ -103,7 +103,7 @@ fn draw_header(f: &mut Frame, area: Rect, cx: &mut Ctx) {
     let app = cx.app;
     let clock = Local::now().format("%H:%M:%S").to_string();
     let right = match (app.ups.len(), app.current()) {
-        (1, Some(u)) => format!("{}  {clock} ", u.label),
+        (1, Some(u)) => format!("{}  {clock} ", u.label()),
         _ => format!("{clock} "),
     };
     let brand = Span::styled(" upst ", t.accent().add_modifier(ratatui::style::Modifier::BOLD));
@@ -131,7 +131,7 @@ fn draw_header(f: &mut Frame, area: Rect, cx: &mut Ctx) {
 
 /// Short display name; the server only matters when there are several.
 pub fn display_name(app: &App, u: &Ups) -> String {
-    if app.servers.len() > 1 { u.label.clone() } else { u.name.clone() }
+    if app.servers.len() > 1 { u.label().to_string() } else { u.name().to_string() }
 }
 
 fn draw_strip(f: &mut Frame, area: Rect, cx: &mut Ctx) {
@@ -281,21 +281,19 @@ pub fn popup(f: &mut Frame, area: Rect, t: &Theme, title: &str, severity: Option
 
 #[cfg(test)]
 pub mod tests {
-    use std::sync::mpsc;
     use std::time::{Duration, SystemTime};
 
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
     use super::*;
-    use crate::app::Options;
+    use crate::app::{Options, Update};
     use crate::model::CmdInfo;
+    use crate::poll;
     use crate::target::Server;
-    use crate::worker::Update;
 
     /// An app fed with `steps` simulated polls, 2 s apart, ending now.
     pub fn demo_app(steps: usize, color: bool) -> App {
-        let (tx, _rx) = mpsc::channel();
         let mut app = App::new(Options {
             interval: Duration::from_secs(2),
             history: Duration::from_secs(6 * 3600),
@@ -311,20 +309,22 @@ pub mod tests {
             user: None,
             password: None,
         });
-        app.add_server(Server { host: "127.0.0.1".into(), port: 3493 }, tx, None);
-        app.update(Update::Connected { server: 0, version: Some("upsd 2.8.4 (upst demo)".into()) });
+        app.add_server(Server { host: "127.0.0.1".into(), port: 3493 }, None, None);
+        let version = Some("upsd 2.8.4 (upst demo)".into());
+        app.update(Update::Server(0, poll::Update::Connected { version }));
         let now = SystemTime::now();
-        for (name, desc, cmds, rw, frames) in crate::demo::record(steps, 2.0) {
-            app.update(Update::UpsList { server: 0, list: vec![(name.clone(), desc)] });
-            let cmds = cmds.into_iter().map(|(name, d)| CmdInfo { name, desc: Some(d) }).collect();
-            app.update(Update::Meta { server: 0, ups: name.clone(), cmds, rw });
-            let i = app.ups.iter().position(|u| u.name == name).unwrap();
-            let n = frames.len();
-            for (k, vars) in frames.into_iter().enumerate() {
+        for sim in crate::demo::simulate(steps, 2.0) {
+            let (name, rw) = (sim.name, sim.rw);
+            app.update(Update::Server(0, poll::Update::UpsList { list: vec![(name.clone(), sim.desc)] }));
+            let cmds = sim.cmds.into_iter().map(|(name, d)| CmdInfo { name, desc: Some(d) }).collect();
+            app.update(Update::Server(0, poll::Update::Meta { ups: name.clone(), cmds, rw }));
+            let i = app.ups.iter().position(|u| u.name() == name).unwrap();
+            let n = sim.frames.len();
+            for (k, vars) in sim.frames.into_iter().enumerate() {
                 let at = now - Duration::from_secs_f64((n - 1 - k) as f64 * 2.0);
-                let label = app.ups[i].label.clone();
-                for (sev, text) in app.ups[i].apply(vars, at) {
-                    app.log_event(&label, sev, text);
+                let label = app.ups[i].label().to_string();
+                for ev in app.ups[i].apply(vars, at) {
+                    app.log_event(&label, ev.severity, ev.to_string());
                 }
             }
         }

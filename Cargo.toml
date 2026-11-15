@@ -1,14 +1,23 @@
 [package]
 name = "upst"
 version = "0.1.2"
-edition = "2024"
-rust-version = "1.88"
+edition.workspace = true
+rust-version.workspace = true
 description = "Terminal dashboard for UPSes monitored by Network UPS Tools"
-license = "Apache-2.0"
-repository = "https://github.com/Dolfost/upst"
+license.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["ups", "nut", "tui", "monitoring", "power"]
 categories = ["command-line-utilities"]
+
+[workspace]
+members = ["upst-core"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/Dolfost/upst"
 
 [dependencies]
 anyhow = "1.0.104"
@@ -17,6 +26,7 @@ clap = { version = "4.6.7", features = ["derive", "env"] }
 ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "layout-cache"] }
 serde = { version = "1.0.229", features = ["derive"] }
 toml = { version = "1.2.1", default-features = false, features = ["parse", "serde", "std"] }
+upst-core = { version = "0.1.0", path = "upst-core", features = ["demo"] }
 
 [profile.release]
 lto = "thin"

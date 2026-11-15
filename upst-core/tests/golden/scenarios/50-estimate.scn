@@ -1,0 +1,307 @@
+# Ups::estimate and the charge Tracker behind it; battery capacity.
+# Format: see ../README.md (or the header of 10-flags.scn).
+
+=== estimate-before-any-poll
+@1700000000 estimate
+
+=== estimate-steady-discharge-with-low
+# 1 % per minute from 50 %, polled every 30 s, low at 20 %.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 50
+battery.charge.low 20
+@1700000000 estimate
+@1700000030 poll+
+@1700000060 poll+
+battery.charge 49
+@1700000060 estimate
+@1700000090 poll+
+@1700000090 estimate
+@1700000120 poll+
+battery.charge 48
+@1700000120 estimate
+@1700000150 poll+
+@1700000180 poll+
+battery.charge 47
+@1700000210 poll+
+@1700000240 poll+
+battery.charge 46
+@1700000240 estimate
+@1700000270 estimate
+@1700000330 estimate
+@1700000331 estimate
+@1700000600 estimate
+
+=== estimate-single-step-rough
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 100
+battery.charge.low 10
+@1700000060 poll+
+battery.charge 99
+@1700000060 estimate
+@1700000090 estimate
+@1700000600 estimate
+@1700000000 estimate
+
+=== estimate-charging-to-full
+@1700000000 poll
+ups.status OL CHRG
+battery.charge 97
+@1700000000 estimate
+@1700000120 poll+
+battery.charge 98
+@1700000120 estimate
+@1700000240 poll+
+battery.charge 99
+@1700000240 estimate
+@1700000360 poll+
+battery.charge 100
+@1700000360 estimate
+@1700000420 poll+
+ups.status OL
+@1700000420 estimate
+
+=== estimate-fallback-after-long-silence
+# Steps every 60 s, then none: past 1.5 step times the rate is averaged
+# up to now.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 80
+battery.charge.low 20
+@1700000060 poll+
+battery.charge 79
+@1700000120 poll+
+battery.charge 78
+@1700000180 poll+
+battery.charge 77
+@1700000240 poll+
+battery.charge 76
+@1700000300 poll+
+battery.charge 75
+@1700000360 estimate
+@1700000390 estimate
+@1700000391 estimate
+@1700000900 estimate
+@1700006300 estimate
+
+=== estimate-with-capacity
+capacity 1000
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 60
+battery.charge.low 30
+@1700000060 poll+
+battery.charge 59
+@1700000120 poll+
+battery.charge 58
+@1700000120 estimate
+@1700000180 poll+
+ups.status OL CHRG
+@1700000360 poll+
+battery.charge 59
+@1700000540 poll+
+battery.charge 60
+@1700000540 estimate
+
+=== capacity-ecoflow-guess
+@1700000000 poll
+ups.status OB DISCHRG
+device.mfr EcoFlow
+ups.power.nominal 2048
+battery.charge 80
+@1700000060 poll+
+battery.charge 79
+@1700000120 poll+
+battery.charge 78
+ups.power.nominal 4096
+@1700000120 estimate
+
+=== capacity-ecoflow-explicit-capacity-wins
+capacity 1000
+@1700000000 poll
+ups.status OB DISCHRG
+device.mfr EcoFlow
+ups.power.nominal 2048
+battery.charge 80
+@1700000060 poll+
+battery.charge 79
+@1700000120 poll+
+battery.charge 78
+@1700000120 estimate
+
+=== capacity-ecoflow-ups-mfr-and-bad-nominal
+# ups.mfr counts too, case does not matter; a zero rating is no rating.
+@1700000000 poll
+ups.status OL
+ups.mfr ECOFLOW
+ups.power.nominal 0
+battery.charge 100
+
+=== capacity-ecoflow-ups-mfr-guess
+@1700000000 poll
+ups.status OL
+ups.mfr ecoflow
+ups.power.nominal 1024.5
+battery.charge 100
+
+=== capacity-ecoflow-seen-after-first-poll
+# Only the first poll guesses.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+device.mfr EcoFlow
+ups.power.nominal 2048
+
+=== capacity-not-ecoflow
+@1700000000 poll
+ups.status OL
+device.mfr APC
+ups.power.nominal 1500
+battery.charge 100
+
+=== estimate-discharge-low-threshold-variants
+# No low, low 0, low above the charge, low equal to the charge, a valid low.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 50
+@1700000060 poll+
+battery.charge 49
+@1700000120 poll+
+battery.charge 48
+@1700000120 estimate
+@1700000121 poll+
+battery.charge.low 0
+@1700000121 estimate
+@1700000122 poll+
+battery.charge.low 60
+@1700000122 estimate
+@1700000123 poll+
+battery.charge.low 48
+@1700000123 estimate
+@1700000124 poll+
+battery.charge.low 47.5
+@1700000124 estimate
+@1700000125 poll+
+battery.charge.low ten
+@1700000125 estimate
+
+=== estimate-after-link-loss
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 70
+battery.charge.low 20
+@1700000060 poll+
+battery.charge 69
+@1700000120 poll+
+battery.charge 68
+@1700000120 estimate
+@1700000130 down Connection refused
+@1700000130 estimate
+@1700000190 poll+
+battery.charge 67
+@1700000190 estimate
+@1700000250 poll+
+battery.charge 66
+@1700000250 estimate
+@1700000310 stale Driver not connected
+@1700000310 estimate
+@1700000370 poll+
+battery.charge 65
+@1700000370 estimate
+@1700000400 gap
+@1700000400 estimate
+
+=== estimate-online-below-full-without-chrg
+# On line under 100 % counts as charging even without CHRG.
+@1700000000 poll
+ups.status OL
+battery.charge 80
+@1700000300 poll+
+battery.charge 81
+@1700000300 estimate
+@1700000600 poll+
+battery.charge 82
+@1700000600 estimate
+@1700000900 poll+
+battery.charge 100
+@1700000900 estimate
+
+=== estimate-trend-switch-resets
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 90
+@1700000060 poll+
+battery.charge 89
+@1700000120 poll+
+battery.charge 88
+@1700000120 estimate
+@1700000130 poll+
+ups.status OL CHRG
+@1700000130 estimate
+@1700000250 poll+
+battery.charge 89
+@1700000250 estimate
+@1700000260 poll+
+ups.status OB DISCHRG
+@1700000260 estimate
+
+=== estimate-wrong-direction
+# Rising charge while discharging gives no estimate; OL DISCHRG counts as
+# discharging.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 50
+@1700000060 poll+
+battery.charge 51
+@1700000060 estimate
+@1700000120 poll+
+battery.charge 52
+@1700000120 estimate
+@1700000180 poll+
+ups.status OL DISCHRG
+battery.charge 52
+@1700000240 poll+
+battery.charge 51
+@1700000240 estimate
+@1700000300 poll+
+ups.status OL CHRG DISCHRG
+battery.charge 50
+@1700000300 estimate
+
+=== estimate-sub-second-steps
+# Two steps less than a second apart give no rate.
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 50
+@1700000010 poll+
+battery.charge 49
+@1700000010.5 poll+
+battery.charge 48
+@1700000011 estimate
+@1700000070 poll+
+battery.charge 47
+@1700000070 estimate
+
+=== estimate-charge-missing-or-not-a-number
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 50
+@1700000060 poll+
+battery.charge 49
+@1700000120 poll+
+battery.charge 48
+@1700000120 estimate
+@1700000180 poll+
+-battery.charge
+@1700000180 estimate
+@1700000240 poll+
+battery.charge n/a
+@1700000240 estimate
+@1700000300 poll+
+battery.charge 46
+@1700000300 estimate
+@1700000360 poll+
+battery.charge 45.5
+@1700000360 estimate

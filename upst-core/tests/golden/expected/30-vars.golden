@@ -1,0 +1,263 @@
+=== alarm-appears-changes-clears
+@1700000000 poll 2 vars
+@1700000010 poll 3 vars
+  1700000010 Crit UPS alarm raised
+  1700000010 Crit Alarm: Replace battery
+@1700000020 poll 3 vars
+  1700000020 Crit Alarm: Overheat
+@1700000030 poll 3 vars
+@1700000040 poll 2 vars
+  1700000040 Good UPS alarm cleared
+@1700000050 poll 3 vars
+@1700000060 poll 3 vars
+@1700000070 poll 3 vars
+  1700000070 Crit Alarm: Fan failure
+@1700000080 state
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=8 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000070.0
+var battery.charge "100"
+var ups.alarm "Fan failure"
+var ups.status "OL"
+changed ups.alarm prev=Some("   ") at=1700000070.0
+changed ups.status prev=Some("OL ALARM") at=1700000040.0
+bands 1700000000..1700000080 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000070:100
+charge_at 1700000000=100 1700000020=100 1700000040=100 1700000060=100 1700000080=100
+now=1700000080 estimate None
+@1700000090 poll 2 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=9 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000090.0
+var battery.charge "100"
+var ups.status "OL"
+changed ups.status prev=Some("OL ALARM") at=1700000040.0
+bands 1700000000..1700000090 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000090:100
+charge_at 1700000000=100 1700000022.500=100 1700000045=100 1700000067.500=100 1700000090=100
+now=1700000090 estimate None
+
+=== alarm-reappears-with-the-same-text
+@1700000000 poll 1 vars
+@1700000010 poll 2 vars
+  1700000010 Crit Alarm: Overheat
+@1700000020 poll 1 vars
+@1700000030 poll 2 vars
+  1700000030 Crit Alarm: Overheat
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=4 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000030.0
+var ups.alarm "Overheat"
+var ups.status "OL"
+changed ups.alarm prev=None at=1700000030.0
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+now=1700000030 estimate None
+
+=== alarm-and-test-result-with-status-change
+@1700000000 poll 2 vars
+@1700000010 poll 3 vars
+  1700000010 Warn Power failure, running on battery
+  1700000010 Crit UPS alarm raised
+  1700000010 Crit Alarm: On battery
+  1700000010 Info Self-test: In progress
+--- end
+state link=Up outages=1 battery_secs=0.000 outage_start=1700000010 power_since=(1700000010, true) since=1700000000 polls=2 headline="ON BATTERY" power=Battery capacity_wh=None capacity_guessed=false
+status tokens=["OB", "DISCHRG", "ALARM", "TEST"] severity=Crit trend=None updated=1700000010.0
+var ups.alarm "On battery"
+var ups.status "OB DISCHRG ALARM TEST"
+var ups.test.result "In progress"
+changed ups.alarm prev=None at=1700000010.0
+changed ups.status prev=Some("OL") at=1700000010.0
+changed ups.test.result prev=Some("No test initiated") at=1700000010.0
+bands 1700000000..1700000010 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+now=1700000010 estimate None
+
+=== test-result-changes
+@1700000000 poll 2 vars
+@1700000010 poll 2 vars
+  1700000010 Info Self-test: In progress
+@1700000040 poll 2 vars
+  1700000040 Info Self-test: Done and passed
+@1700000050 poll 2 vars
+@1700000060 poll 2 vars
+@1700000070 poll 1 vars
+@1700000080 poll 2 vars
+  1700000080 Info Self-test: Done and passed
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=7 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000080.0
+var ups.status "OL"
+var ups.test.result "Done and passed"
+changed ups.status prev=Some("OL TEST") at=1700000040.0
+changed ups.test.result prev=None at=1700000080.0
+bands 1700000000..1700000080 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+now=1700000080 estimate None
+
+=== var-disappears-and-reappears
+@1700000000 poll 3 vars
+@1700000010 state
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=1 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000000.0
+var input.voltage "230"
+var output.voltage "230"
+var ups.status "OL"
+bands 1700000000..1700000010 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series input.voltage 1700000000:230
+series output.voltage 1700000000:230
+now=1700000010 estimate None
+@1700000020 poll 2 vars
+@1700000030 state
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000020.0
+var output.voltage "230"
+var ups.status "OL"
+bands 1700000000..1700000030 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series input.voltage 1700000000:230
+series output.voltage 1700000000:230 1700000020:230
+now=1700000030 estimate None
+@1700000040 poll 3 vars
+@1700000050 state
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=3 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000040.0
+var input.voltage "230"
+var output.voltage "230"
+var ups.status "OL"
+changed input.voltage prev=None at=1700000040.0
+bands 1700000000..1700000050 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series input.voltage 1700000000:230 1700000040:230
+series output.voltage 1700000000:230 1700000040:230
+now=1700000050 estimate None
+@1700000060 poll 2 vars
+@1700000070 poll 3 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700000070.0
+var input.voltage "231"
+var output.voltage "229"
+var ups.status "OL"
+changed input.voltage prev=Some("230") at=1700000060.0
+changed output.voltage prev=None at=1700000070.0
+bands 1700000000..1700000070 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series input.voltage 1700000000:230 1700000040:230 1700000060:231 1700000070:231
+series output.voltage 1700000000:230 1700000040:230 1700000070:229
+now=1700000070 estimate None
+
+=== var-prev-and-changed-bookkeeping
+@1700000000 poll 3 vars
+@1700000010 poll 3 vars
+@1700000020 poll 3 vars
+@1700000030 poll 3 vars
+@1700000040 poll 3 vars
+@1700000045 state
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=5 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000040.0
+var battery.charge "98"
+var ups.load "21"
+var ups.status "OL"
+changed battery.charge prev=Some("99") at=1700000040.0
+changed ups.load prev=Some("20") at=1700000030.0
+bands 1700000000..1700000045 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000010:99 1700000030:99 1700000040:98
+series ups.load 1700000000:20 1700000020:20 1700000030:21 1700000040:21
+charge_at 1700000000=100 1700000011.250=99 1700000022.500=99 1700000033.750=99 1700000045=98
+now=1700000045 estimate None
+@1700000050 poll 4 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000050.0
+var battery.charge "98"
+var ups.beeper.status "enabled"
+var ups.load "21"
+var ups.status "OL"
+changed battery.charge prev=Some("99") at=1700000040.0
+changed ups.beeper.status prev=None at=1700000050.0
+changed ups.load prev=Some("20") at=1700000030.0
+bands 1700000000..1700000050 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000010:99 1700000030:99 1700000040:98 1700000050:98
+series ups.load 1700000000:20 1700000020:20 1700000030:21 1700000050:21
+charge_at 1700000000=100 1700000012.500=99 1700000025=99 1700000037.500=99 1700000050=98
+now=1700000050 estimate None
+
+=== history-recordable-filter
+@1700000000 poll 20 vars
+@1700000060 poll 20 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=2 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000060.0
+var battery.charge "41"
+var battery.date "2020"
+var battery.mfr.date "2021"
+var battery.runtime "3500"
+var device.serial "99"
+var driver.parameter.pollinterval "2"
+var driver.version.internal "0.1"
+var input.frequency "NaN"
+var input.voltage "229.9"
+var output.voltage "inf"
+var ups.beeper.status "enabled"
+var ups.firmware "12"
+var ups.firmware.version "4"
+var ups.id "7"
+var ups.load "11"
+var ups.productid "0501"
+var ups.realpower "0x10"
+var ups.serial "123456"
+var ups.status "OL"
+var ups.vendorid "0764"
+changed battery.charge prev=Some(" 42 ") at=1700000060.0
+changed battery.runtime prev=Some("3600") at=1700000060.0
+changed input.voltage prev=Some("230.5") at=1700000060.0
+changed ups.load prev=Some("1e1") at=1700000060.0
+bands 1700000000..1700000060 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:42 1700000060:41
+series battery.runtime 1700000000:3600 1700000060:3500
+series input.voltage 1700000000:230.5 1700000060:229.9
+series ups.firmware 1700000000:12 1700000060:12
+series ups.load 1700000000:10 1700000060:11
+charge_at 1700000000=42 1700000015=42 1700000030=42 1700000045=42 1700000060=41
+now=1700000060 estimate None
+
+=== history-flat-runs-collapse
+@1700000000 poll 3 vars
+@1700000010 poll 3 vars
+@1700000020 poll 3 vars
+@1700000030 poll 3 vars
+@1700000040 poll 3 vars
+@1700000050 poll 3 vars
+@1700000060 poll 3 vars
+@1700000070 poll 3 vars
+--- end
+state link=Up outages=0 battery_secs=0.000 outage_start=None power_since=(1700000000, false) since=1700000000 polls=8 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=Some(Charging) updated=1700000070.0
+var battery.charge "99"
+var input.voltage "230"
+var ups.status "OL"
+changed battery.charge prev=Some("100") at=1700000070.0
+changed input.voltage prev=Some("231") at=1700000060.0
+bands 1700000000..1700000070 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700000060:100 1700000070:99
+series input.voltage 1700000000:230 1700000020:230 1700000030:231 1700000050:231 1700000060:230 1700000070:230
+charge_at 1700000000=100 1700000017.500=100 1700000035=100 1700000052.500=100 1700000070=99
+now=1700000070 estimate None
+
+=== history-trim-after-a-day
+@1700000000 poll 3 vars
+@1700000060 poll 3 vars
+@1700000120 poll 3 vars
+  1700000120 Warn Power failure, running on battery
+@1700000180 poll 3 vars
+  1700000180 Good Power restored after 1m 00s on battery
+@1700090000 poll 3 vars
+@1700090060 poll 3 vars
+--- end
+state link=Up outages=1 battery_secs=60.000 outage_start=None power_since=(1700000180, true) since=1700000000 polls=6 headline="ON LINE" power=Online capacity_wh=None capacity_guessed=false
+status tokens=["OL"] severity=Good trend=None updated=1700090060.0
+var battery.charge "100"
+var input.voltage "234"
+var ups.status "OL"
+changed input.voltage prev=Some("233") at=1700090060.0
+changed ups.status prev=Some("OL CHRG") at=1700090000.0
+bands 1700000000..1700090060 Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online,Online
+series battery.charge 1700000000:100 1700090060:100
+series input.voltage 1700000180:232 1700090000:233 1700090060:234
+charge_at 1700000000=100 1700022515=100 1700045030=100 1700067545=100 1700090060=100
+now=1700090060 estimate None

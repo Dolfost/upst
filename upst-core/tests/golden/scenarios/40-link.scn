@@ -1,0 +1,98 @@
+# Connection and data loss: Ups::lost_at, Ups::gap and the next poll.
+# Format: see ../README.md (or the header of 10-flags.scn).
+
+=== link-connecting-down-first
+# Down before any poll; the same Down again says nothing.
+@1700000000 down Connection refused
+@1700000010 down Connection refused
+@1700000020 down No route to host
+@1700000030 poll
+ups.status OL
+battery.charge 100
+
+=== link-connecting-down-after-polls
+# Back to Connecting (the app never does this) after a poll: no events.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 connecting
+@1700000020 down Connection refused
+@1700000030 poll+
+
+=== link-connecting-stale-first
+# Stale before any poll; the first poll then reports fresh data.
+@1700000000 stale Driver not connected
+@1700000010 poll
+ups.status OL
+battery.charge 100
+
+=== link-connecting-stale-then-down
+@1700000000 stale Driver not connected
+@1700000010 down Connection refused
+@1700000020 poll
+ups.status OL
+
+=== link-up-stale-up
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 stale Driver not connected
+@1700000015 stale Driver not connected
+@1700000020 stale Data stale
+@1700000030 poll+
+@1700000040 poll+
+
+=== link-up-down-up
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 down Connection refused
+@1700000020 down Connection refused
+@1700000030 poll+
+
+=== link-stale-to-down
+@1700000000 poll
+ups.status OL
+@1700000010 stale Driver not connected
+@1700000020 down Connection reset by peer
+@1700000030 poll+
+
+=== link-down-to-stale
+@1700000000 poll
+ups.status OL
+@1700000010 down Connection refused
+@1700000020 stale Driver not connected
+@1700000030 poll+
+
+=== link-gap-then-poll
+@1700000000 poll
+ups.status OB DISCHRG
+battery.charge 80
+@1700000060 poll+
+battery.charge 79
+@1700000100 gap
+@1700000110 state
+@1700000120 down not recorded
+@1700000130 down Connection refused
+@1700000200 poll+
+ups.status OL CHRG
+@1700000210 down Connection refused
+
+=== link-gap-before-any-poll
+@1700000000 gap
+@1700000010 down Connection refused
+@1700000020 poll
+ups.status OB
+battery.charge 50
+
+=== link-loss-during-outage
+# Losing the link does not end the outage.
+@1700000000 poll
+ups.status OL
+battery.charge 100
+@1700000010 poll+
+ups.status OB DISCHRG
+@1700000040 down Connection refused
+@1700000100 stale Driver not connected
+@1700000150 poll+
+ups.status OL CHRG
