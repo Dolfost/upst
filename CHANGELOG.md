@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-11-15
 
-- The protocol client, the UPS model, the pollers, the journal and the demo server are now a library crate, [upst-core](upst-core), for other programs to build on; upst depends on it and works as before.
+- The protocol client, the UPS model, the pollers, the journal and the demo server are now a library crate, [upst-core](https://github.com/Dolfost/upst/tree/main/upst-core), for other programs to build on; upst depends on it and works as before.
 - Recorded history in which a poll and the loss of upsd fall in the same second now ends with upsd lost, instead of a live connection that was not there.
 - The "Battery low" event shows the charge as a number, without the driver's padding, and leaves it out when the driver reports none.
 - upst polls every second by default (was 2 s), so live readings such as a power station's grid voltage keep up; `-i` and `<`/`>` still change it.

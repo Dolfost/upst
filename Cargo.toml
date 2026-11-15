@@ -1,6 +1,6 @@
 [package]
 name = "upst"
-version = "0.1.2"
+version = "0.2.0"
 edition.workspace = true
 rust-version.workspace = true
 description = "Terminal dashboard for UPSes monitored by Network UPS Tools"

@@ -2,7 +2,7 @@
 
 Changes to the public API of upst-core. Until 1.0, breaking changes come with a new minor version.
 
-## Unreleased
+## 0.1.0 - 2026-11-15
 
 The first release: the core of upst 0.1.2, split out of the binary.
 
